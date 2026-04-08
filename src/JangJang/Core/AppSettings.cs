@@ -13,9 +13,15 @@ public class AppSettings
     public int CustomIdleMinutes { get; set; } = 10;
     public double PetSize { get; set; } = 1.0;
     public bool StartWithWindows { get; set; }
+    public bool NoRestMode { get; set; }
     public double PetPositionX { get; set; } = double.NaN;
     public double PetPositionY { get; set; } = double.NaN;
     public string? PetImagePath { get; set; }
+    public string? HappyImagePath { get; set; }
+    public string? IdleImagePath { get; set; }
+    public string? AnnoyedImagePath { get; set; }
+    public string? SleepingImagePath { get; set; }
+    public string? WakeUpImagePath { get; set; }
     public bool GrowWhenAnnoyed { get; set; } = true;
     public double MaxGrowScale { get; set; } = 2.0;
     public string TargetProcessName { get; set; } = "CLIPStudioPaint";

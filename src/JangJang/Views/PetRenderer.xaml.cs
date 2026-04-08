@@ -44,7 +44,7 @@ public partial class PetRenderer : UserControl
                 ColorOverlay.Opacity = vm.AnnoyanceLevel * 0.5;
                 break;
 
-            case Core.PetState.Idle:
+            case Core.PetState.Alert:
                 ColorOverlay.Fill = new SolidColorBrush(Color.FromRgb(255, 165, 0));
                 ColorOverlay.Opacity = 0.2;
                 break;
@@ -54,9 +54,25 @@ public partial class PetRenderer : UserControl
                 ColorOverlay.Opacity = 0.3;
                 break;
 
+            case Core.PetState.WakeUp:
+                ColorOverlay.Opacity = 0;
+                break;
+
             default:
                 ColorOverlay.Opacity = 0;
                 break;
+        }
+
+        // 역행 시 타이머 빨간 볼드
+        if (vm.IsTimeReversing)
+        {
+            WorkTimeBlock.Foreground = new SolidColorBrush(System.Windows.Media.Colors.Red);
+            WorkTimeBlock.FontWeight = System.Windows.FontWeights.Bold;
+        }
+        else
+        {
+            WorkTimeBlock.Foreground = new SolidColorBrush(Color.FromArgb(0xAA, 0xFF, 0xFF, 0xFF));
+            WorkTimeBlock.FontWeight = System.Windows.FontWeights.Normal;
         }
     }
 }

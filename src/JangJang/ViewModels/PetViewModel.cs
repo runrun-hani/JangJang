@@ -12,6 +12,14 @@ public partial class PetViewModel : ObservableObject
     private readonly AppSettings _settings;
     private int _dialogueCooldown;
 
+    // 상태별 이미지 캐시
+    private ImageSource? _defaultImage;
+    private ImageSource? _happyImage;
+    private ImageSource? _idleImage;
+    private ImageSource? _annoyedImage;
+    private ImageSource? _sleepingImage;
+    private ImageSource? _wakeUpImage;
+
     [ObservableProperty] private PetState _currentState = PetState.Sleeping;
     [ObservableProperty] private double _annoyanceLevel;
     [ObservableProperty] private double _shakeAmplitude;
@@ -19,37 +27,70 @@ public partial class PetViewModel : ObservableObject
     [ObservableProperty] private string _workTimeText = "";
     [ObservableProperty] private ImageSource? _petImageSource;
     [ObservableProperty] private double _angryScale = 1.0;
+    [ObservableProperty] private bool _isTimeReversing;
 
     public PetViewModel(ActivityMonitor monitor, AppSettings settings)
     {
         _monitor = monitor;
         _settings = settings;
         _monitor.StateUpdated += OnStateUpdated;
-        LoadPetImage();
+        LoadAllImages();
         UpdateWorkTimeText();
     }
 
-    public void LoadPetImage()
+    public void LoadAllImages()
     {
-        if (!string.IsNullOrEmpty(_settings.PetImagePath) && File.Exists(_settings.PetImagePath))
+        _defaultImage = LoadImage(_settings.PetImagePath, "pack://application:,,,/Resources/Default.png");
+        _happyImage = LoadImage(_settings.HappyImagePath, null);
+        _idleImage = LoadImage(_settings.IdleImagePath, null);
+        _annoyedImage = LoadImage(_settings.AnnoyedImagePath, null);
+        _sleepingImage = LoadImage(_settings.SleepingImagePath, "pack://application:,,,/Resources/Sleeping.png");
+        _wakeUpImage = LoadImage(_settings.WakeUpImagePath, "pack://application:,,,/Resources/WakeUp.png");
+
+        // 현재 상태에 맞는 이미지 적용
+        PetImageSource = GetImageForState(CurrentState);
+    }
+
+    // 하위 호환
+    public void LoadPetImage() => LoadAllImages();
+
+    private static ImageSource? LoadImage(string? path, string? fallbackPack)
+    {
+        if (!string.IsNullOrEmpty(path) && File.Exists(path))
         {
-            var bitmap = new BitmapImage();
-            bitmap.BeginInit();
-            bitmap.UriSource = new Uri(_settings.PetImagePath, UriKind.Absolute);
-            bitmap.CacheOption = BitmapCacheOption.OnLoad;
-            bitmap.EndInit();
-            bitmap.Freeze();
-            PetImageSource = bitmap;
+            var bmp = new BitmapImage();
+            bmp.BeginInit();
+            bmp.UriSource = new Uri(path, UriKind.Absolute);
+            bmp.CacheOption = BitmapCacheOption.OnLoad;
+            bmp.EndInit();
+            bmp.Freeze();
+            return bmp;
         }
-        else
+        if (fallbackPack != null)
+            return new BitmapImage(new Uri(fallbackPack));
+        return null;
+    }
+
+    private ImageSource? GetImageForState(PetState state)
+    {
+        var stateImage = state switch
         {
-            PetImageSource = new BitmapImage(new Uri("pack://application:,,,/Resources/pet.png"));
-        }
+            PetState.Happy => _happyImage,
+            PetState.Alert => _idleImage,
+            PetState.Annoyed => _annoyedImage,
+            PetState.Sleeping => _sleepingImage,
+            PetState.WakeUp => _wakeUpImage,
+            _ => null
+        };
+        return stateImage ?? _defaultImage;
     }
 
     private void UpdateWorkTimeText()
     {
-        var s = _monitor.SessionSeconds;
+        IsTimeReversing = _monitor.IsReversing;
+        var s = (CurrentState == PetState.Happy || _settings.NoRestMode)
+            ? _monitor.SessionSeconds
+            : _monitor.IdleSessionSeconds;
         WorkTimeText = $"{s / 3600:D2}:{s % 3600 / 60:D2}:{s % 60:D2}";
     }
 
@@ -59,10 +100,13 @@ public partial class PetViewModel : ObservableObject
         CurrentState = state;
         AnnoyanceLevel = annoyance;
 
-        // 작업 시간 업데이트
         UpdateWorkTimeText();
 
-        // 대사: 상태 전환 시 즉시, 같은 상태면 5~8초마다 교체
+        // 상태 전환 시 이미지 교체
+        if (state != prevState)
+            PetImageSource = GetImageForState(state);
+
+        // 대사
         _dialogueCooldown--;
         if (state != prevState || _dialogueCooldown <= 0)
         {
@@ -76,20 +120,21 @@ public partial class PetViewModel : ObservableObject
                 ShakeAmplitude = 0;
                 AngryScale = 1.0;
                 break;
-
-            case PetState.Idle:
+            case PetState.Alert:
                 ShakeAmplitude = 0;
                 AngryScale = 1.0;
                 break;
-
             case PetState.Annoyed:
                 ShakeAmplitude = annoyance * 8;
                 AngryScale = _settings.GrowWhenAnnoyed
                     ? 1.0 + annoyance * (_settings.MaxGrowScale - 1.0)
                     : 1.0;
                 break;
-
             case PetState.Sleeping:
+                ShakeAmplitude = 0;
+                AngryScale = 1.0;
+                break;
+            case PetState.WakeUp:
                 ShakeAmplitude = 0;
                 AngryScale = 1.0;
                 break;

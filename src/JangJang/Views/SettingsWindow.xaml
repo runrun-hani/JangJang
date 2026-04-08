@@ -1,20 +1,26 @@
 <Window x:Class="JangJang.Views.SettingsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="장장 설정" Width="340" Height="550"
+        Title="장장 설정" Width="380" Height="600"
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize">
 
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
     <StackPanel Margin="16">
+        <CheckBox x:Name="AutoStartCheck" Content="Windows 시작 시 자동 실행" Margin="0,0,0,4"/>
+        <CheckBox x:Name="NoRestCheck" Content="휴식은 허락하지 않는다" Margin="0,0,0,4"/>
+
+        <Separator Margin="0,12,0,12"/>
+
         <TextBlock Text="감시 대상 프로그램" FontWeight="Bold" FontSize="14"/>
         <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-            <TextBox x:Name="TargetProcessBox" Width="160" Margin="0,0,8,0"/>
-            <Button Content="실행 중 프로그램에서 선택..." Click="OnSelectProcessClick" Padding="4,2"/>
+            <TextBox x:Name="TargetProcessBox" Width="180" Margin="0,0,8,0"/>
+            <Button Content="목록에서 선택..." Click="OnSelectProcessClick" Padding="4,2"/>
         </StackPanel>
 
         <Separator Margin="0,12,0,12"/>
 
-        <TextBlock Text="유휴 시간 설정" FontWeight="Bold" FontSize="14"/>
+        <TextBlock Text="경계 시간 설정" FontWeight="Bold" FontSize="14"/>
         <ComboBox x:Name="PresetCombo" Margin="0,4,0,0" SelectionChanged="OnPresetChanged"/>
         <StackPanel x:Name="CustomPanel" Orientation="Horizontal" Visibility="Collapsed" Margin="0,4,0,0">
             <TextBlock Text="사용자 지정 (분):" VerticalAlignment="Center" Margin="0,0,8,0"/>
@@ -23,23 +29,97 @@
 
         <Separator Margin="0,12,0,12"/>
 
-        <TextBlock Text="펫 이미지" FontWeight="Bold" FontSize="14"/>
-        <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-            <Border BorderBrush="Gray" BorderThickness="1" Width="64" Height="64" Margin="0,0,8,0">
-                <Image x:Name="PreviewImage" Stretch="Uniform"
-                       RenderOptions.BitmapScalingMode="NearestNeighbor"/>
+        <TextBlock Text="이미지" FontWeight="Bold" FontSize="14"/>
+
+        <!-- 기본 이미지 -->
+        <StackPanel Orientation="Horizontal" Margin="0,4,0,4">
+            <Border BorderBrush="Gray" BorderThickness="1" Width="48" Height="48" Margin="0,0,8,0">
+                <Image x:Name="PreviewDefault" Stretch="Uniform" RenderOptions.BitmapScalingMode="NearestNeighbor"/>
             </Border>
             <StackPanel VerticalAlignment="Center">
-                <Button Content="이미지 선택..." Click="OnSelectImageClick" Padding="8,4"/>
-                <Button Content="기본 이미지로" Click="OnResetImageClick" Padding="8,4" Margin="0,4,0,0"/>
+                <TextBlock Text="기본" FontWeight="SemiBold"/>
+                <StackPanel Orientation="Horizontal">
+                    <Button Content="선택" Click="OnSelectDefaultImage" Padding="4,1" FontSize="11"/>
+                    <Button Content="초기화" Click="OnResetDefaultImage" Padding="4,1" FontSize="11" Margin="4,0,0,0"/>
+                </StackPanel>
             </StackPanel>
         </StackPanel>
-        <TextBlock x:Name="ImagePathText" Text="" FontSize="10" Foreground="Gray" Margin="0,4,0,0"
-                   TextTrimming="CharacterEllipsis"/>
+
+        <!-- 상태별 이미지 -->
+        <StackPanel Orientation="Horizontal" Margin="0,2,0,2">
+            <Border BorderBrush="Gray" BorderThickness="1" Width="48" Height="48" Margin="0,0,8,0">
+                <Image x:Name="PreviewHappy" Stretch="Uniform" RenderOptions.BitmapScalingMode="NearestNeighbor"/>
+            </Border>
+            <StackPanel VerticalAlignment="Center">
+                <TextBlock Text="작업 중 (Happy)" FontWeight="SemiBold"/>
+                <StackPanel Orientation="Horizontal">
+                    <Button Content="선택" Click="OnSelectHappyImage" Padding="4,1" FontSize="11"/>
+                    <Button Content="초기화" Click="OnResetHappyImage" Padding="4,1" FontSize="11" Margin="4,0,0,0"/>
+                </StackPanel>
+            </StackPanel>
+        </StackPanel>
+
+        <StackPanel Orientation="Horizontal" Margin="0,2,0,2">
+            <Border BorderBrush="Gray" BorderThickness="1" Width="48" Height="48" Margin="0,0,8,0">
+                <Image x:Name="PreviewIdle" Stretch="Uniform" RenderOptions.BitmapScalingMode="NearestNeighbor"/>
+            </Border>
+            <StackPanel VerticalAlignment="Center">
+                <TextBlock Text="경계 (Alert)" FontWeight="SemiBold"/>
+                <StackPanel Orientation="Horizontal">
+                    <Button Content="선택" Click="OnSelectIdleImage" Padding="4,1" FontSize="11"/>
+                    <Button Content="초기화" Click="OnResetIdleImage" Padding="4,1" FontSize="11" Margin="4,0,0,0"/>
+                </StackPanel>
+            </StackPanel>
+        </StackPanel>
+
+        <StackPanel Orientation="Horizontal" Margin="0,2,0,2">
+            <Border BorderBrush="Gray" BorderThickness="1" Width="48" Height="48" Margin="0,0,8,0">
+                <Image x:Name="PreviewAnnoyed" Stretch="Uniform" RenderOptions.BitmapScalingMode="NearestNeighbor"/>
+            </Border>
+            <StackPanel VerticalAlignment="Center">
+                <TextBlock Text="화남 (Annoyed)" FontWeight="SemiBold"/>
+                <StackPanel Orientation="Horizontal">
+                    <Button Content="선택" Click="OnSelectAnnoyedImage" Padding="4,1" FontSize="11"/>
+                    <Button Content="초기화" Click="OnResetAnnoyedImage" Padding="4,1" FontSize="11" Margin="4,0,0,0"/>
+                </StackPanel>
+            </StackPanel>
+        </StackPanel>
+
+        <StackPanel Orientation="Horizontal" Margin="0,2,0,2">
+            <Border BorderBrush="Gray" BorderThickness="1" Width="48" Height="48" Margin="0,0,8,0">
+                <Image x:Name="PreviewSleeping" Stretch="Uniform" RenderOptions.BitmapScalingMode="NearestNeighbor"/>
+            </Border>
+            <StackPanel VerticalAlignment="Center">
+                <TextBlock Text="수면 (Sleeping)" FontWeight="SemiBold"/>
+                <StackPanel Orientation="Horizontal">
+                    <Button Content="선택" Click="OnSelectSleepingImage" Padding="4,1" FontSize="11"/>
+                    <Button Content="초기화" Click="OnResetSleepingImage" Padding="4,1" FontSize="11" Margin="4,0,0,0"/>
+                </StackPanel>
+            </StackPanel>
+        </StackPanel>
+
+        <StackPanel Orientation="Horizontal" Margin="0,2,0,2">
+            <Border BorderBrush="Gray" BorderThickness="1" Width="48" Height="48" Margin="0,0,8,0">
+                <Grid>
+                    <TextBlock x:Name="WakeUpPlaceholder" Text="?" FontSize="24" FontWeight="Bold"
+                               Foreground="Gray" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    <Image x:Name="PreviewWakeUp" Stretch="Uniform" RenderOptions.BitmapScalingMode="NearestNeighbor"/>
+                </Grid>
+            </Border>
+            <StackPanel VerticalAlignment="Center">
+                <TextBlock Text="대기 (WakeUp)" FontWeight="SemiBold"/>
+                <StackPanel Orientation="Horizontal">
+                    <Button Content="선택" Click="OnSelectWakeUpImage" Padding="4,1" FontSize="11"/>
+                    <Button Content="초기화" Click="OnResetWakeUpImage" Padding="4,1" FontSize="11" Margin="4,0,0,0"/>
+                </StackPanel>
+            </StackPanel>
+        </StackPanel>
+
+        <TextBlock Text="상태별 이미지 미설정 시 기본 이미지 사용" FontSize="10" Foreground="Gray" Margin="0,4,0,0"/>
 
         <Separator Margin="0,12,0,12"/>
 
-        <TextBlock Text="펫 크기" FontWeight="Bold" FontSize="14"/>
+        <TextBlock Text="크기" FontWeight="Bold" FontSize="14"/>
         <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
             <Slider x:Name="SizeSlider" Minimum="0.5" Maximum="5.0" Width="180"
                     TickFrequency="0.1" IsSnapToTickEnabled="True" Value="1.0"/>
@@ -50,7 +130,7 @@
         <Separator Margin="0,12,0,12"/>
 
         <CheckBox x:Name="GrowCheck" Content="화나면 점점 커지기" Margin="0,0,0,4"/>
-        <StackPanel x:Name="GrowPanel" Orientation="Horizontal" Margin="16,0,0,0">
+        <StackPanel Orientation="Horizontal" Margin="16,0,0,0">
             <TextBlock Text="최대 배율:" VerticalAlignment="Center" Margin="0,0,8,0"/>
             <Slider x:Name="GrowSlider" Minimum="1.5" Maximum="5.0" Width="120"
                     TickFrequency="0.5" IsSnapToTickEnabled="True" Value="2.0"/>
@@ -61,6 +141,7 @@
         <Separator Margin="0,12,0,12"/>
 
         <Button Content="저장" Width="80" HorizontalAlignment="Right"
-                Click="OnSaveClick" Padding="8,4"/>
+                Click="OnSaveClick" Padding="8,4" Margin="0,0,0,8"/>
     </StackPanel>
+    </ScrollViewer>
 </Window>

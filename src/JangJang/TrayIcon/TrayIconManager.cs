@@ -46,8 +46,9 @@ public class TrayIconManager : IDisposable
         var (color, text) = state switch
         {
             PetState.Happy => (DrawColor.Gold, "장장 - 열심히 일하는 중!"),
-            PetState.Idle => (DrawColor.Orange, "장장 - ...뭐 하는 거야?"),
+            PetState.Alert => (DrawColor.Orange, "장장 - ...뭐 하는 거야?"),
             PetState.Annoyed => (DrawColor.Red, "장장 - 일 안 해?!"),
+            PetState.WakeUp => (DrawColor.LightBlue, "장장 - ..."),
             _ => (DrawColor.Gray, "장장 - zzZ...")
         };
 

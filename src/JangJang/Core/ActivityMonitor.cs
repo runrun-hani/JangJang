@@ -15,11 +15,16 @@ public class ActivityMonitor : IDisposable
     private bool _targetRunning;
     private HashSet<uint> _targetPids = new();
     private double _idleSeconds;
+    private int _idleSessionSeconds;
+    private DateTime? _forceSleepUntil;
+    private bool _inWakeUp;
 
     public PetState CurrentState { get; private set; } = PetState.Sleeping;
     public double AnnoyanceLevel { get; private set; }
     public WorkLog WorkLog => _workLog;
     public int SessionSeconds => _sessionSeconds;
+    public int IdleSessionSeconds => _idleSessionSeconds;
+    public bool IsReversing { get; private set; }
 
     public event Action<PetState, double>? StateUpdated;
 
@@ -34,9 +39,45 @@ public class ActivityMonitor : IDisposable
     public void Start() => _timer.Start();
     public void Stop() => _timer.Stop();
 
+    public void ForceSleep(TimeSpan duration)
+    {
+        _forceSleepUntil = DateTime.Now + duration;
+        _idleSeconds = 0;
+        UpdateState(PetState.Sleeping, 0);
+    }
+
     private void OnTick(object? sender, EventArgs e)
     {
         _tickCount++;
+
+        if (_forceSleepUntil.HasValue)
+        {
+            if (DateTime.Now < _forceSleepUntil.Value)
+            {
+                UpdateState(PetState.Sleeping, 0);
+                return;
+            }
+            _forceSleepUntil = null;
+            _inWakeUp = true;
+        }
+
+        if (_inWakeUp)
+        {
+            if (_tickCount == 1 || _tickCount % 5 == 0)
+                RefreshTargetProcesses();
+
+            var wkPid = NativeMethods.GetForegroundProcessId();
+            if (_targetPids.Contains(wkPid) || IsProcessNameMatch(wkPid))
+            {
+                _inWakeUp = false;
+                _idleSeconds = 0;
+            }
+            else
+            {
+                UpdateState(PetState.WakeUp, 0);
+                return;
+            }
+        }
 
         if (_tickCount == 1 || _tickCount % 5 == 0)
             RefreshTargetProcesses();
@@ -55,6 +96,8 @@ public class ActivityMonitor : IDisposable
         if (targetFocused)
         {
             _idleSeconds = 0;
+            _idleSessionSeconds = 0;
+            IsReversing = false;
             // 작업 시간 기록
             _sessionSeconds++;
             _workLog.AddSecond();
@@ -69,6 +112,10 @@ public class ActivityMonitor : IDisposable
         else
         {
             _idleSeconds += 1;
+            _idleSessionSeconds++;
+            IsReversing = _settings.NoRestMode && _sessionSeconds > 0;
+            if (IsReversing)
+                _sessionSeconds--;
         }
 
         var threshold = _settings.IdleThresholdSeconds;
@@ -79,7 +126,7 @@ public class ActivityMonitor : IDisposable
         }
         else if (_idleSeconds < threshold)
         {
-            UpdateState(PetState.Idle, 0);
+            UpdateState(PetState.Alert, 0);
         }
         else
         {

@@ -12,6 +12,7 @@ public partial class App : Application
     private Mutex? _mutex;
     private ActivityMonitor? _monitor;
     private TrayIconManager? _trayManager;
+    private NotificationManager? _notificationManager;
 
     private void OnStartup(object sender, StartupEventArgs e)
     {
@@ -31,6 +32,7 @@ public partial class App : Application
         var petWindow = new PetWindow(viewModel, settings);
 
         _trayManager = new TrayIconManager(_monitor, petWindow, settings);
+        _notificationManager = new NotificationManager(_monitor);
 
         petWindow.Show();
         _monitor.Start();
@@ -38,6 +40,7 @@ public partial class App : Application
 
     private void OnExit(object sender, ExitEventArgs e)
     {
+        _notificationManager?.Dispose();
         _monitor?.Dispose();
         _trayManager?.Dispose();
         _mutex?.ReleaseMutex();

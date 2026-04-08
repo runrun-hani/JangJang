@@ -3,7 +3,8 @@ namespace JangJang.Core;
 public enum PetState
 {
     Happy,
-    Idle,
+    Alert,
     Annoyed,
-    Sleeping
+    Sleeping,
+    WakeUp
 }
