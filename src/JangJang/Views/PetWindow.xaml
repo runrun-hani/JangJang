@@ -1,0 +1,25 @@
+<Window x:Class="JangJang.Views.PetWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:views="clr-namespace:JangJang.Views"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Topmost="True"
+        ShowInTaskbar="False"
+        ResizeMode="NoResize"
+        SizeToContent="WidthAndHeight"
+        MouseLeftButtonDown="OnMouseLeftButtonDown"
+        MouseRightButtonDown="OnMouseRightButtonDown"
+        LocationChanged="OnLocationChanged">
+
+    <Window.ContextMenu>
+        <ContextMenu>
+            <MenuItem Header="설정 (_S)" Click="OnSettingsClick"/>
+            <Separator/>
+            <MenuItem Header="종료 (_X)" Click="OnExitClick"/>
+        </ContextMenu>
+    </Window.ContextMenu>
+
+    <views:PetRenderer x:Name="Renderer" DataContext="{Binding}"/>
+</Window>

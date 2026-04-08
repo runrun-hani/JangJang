@@ -1,0 +1,24 @@
+## .NET
+bin/
+obj/
+publish/
+publish_new/
+publish2/
+publish3/
+publish4/
+publish5/
+publish6/
+
+## IDE
+.vs/
+*.user
+*.suo
+*.cache
+
+## OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+## Claude
+.claude/
