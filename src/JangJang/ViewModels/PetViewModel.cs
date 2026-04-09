@@ -88,9 +88,7 @@ public partial class PetViewModel : ObservableObject
     private void UpdateWorkTimeText()
     {
         IsTimeReversing = _monitor.IsReversing;
-        var s = (CurrentState == PetState.Happy || _settings.NoRestMode)
-            ? _monitor.SessionSeconds
-            : _monitor.IdleSessionSeconds;
+        var s = _monitor.SessionSeconds;
         WorkTimeText = $"{s / 3600:D2}:{s % 3600 / 60:D2}:{s % 60:D2}";
     }
 
