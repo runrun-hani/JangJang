@@ -131,12 +131,16 @@ public partial class SettingsWindow : Window
     {
         var allProcs = Process.GetProcesses();
         var processes = new List<(string Name, string Title)>();
+        var selfPid = Environment.ProcessId;
         foreach (var p in allProcs)
         {
             try
             {
-                if (p.MainWindowHandle != IntPtr.Zero && !string.IsNullOrEmpty(p.MainWindowTitle))
-                    processes.Add((p.ProcessName, p.MainWindowTitle));
+                if (p.Id != selfPid && p.MainWindowHandle != IntPtr.Zero)
+                {
+                    var title = string.IsNullOrEmpty(p.MainWindowTitle) ? "" : p.MainWindowTitle;
+                    processes.Add((p.ProcessName, title));
+                }
             }
             catch { }
             finally { p.Dispose(); }
@@ -155,7 +159,10 @@ public partial class SettingsWindow : Window
         var listBox = new ListBox { Height = 260 };
 
         foreach (var (name, title) in processes)
-            listBox.Items.Add(new ListBoxItem { Content = $"{name}  —  {title}", Tag = name });
+        {
+            var display = string.IsNullOrEmpty(title) ? name : $"{name}  —  {title}";
+            listBox.Items.Add(new ListBoxItem { Content = display, Tag = name });
+        }
 
         var okBtn = new Button
         {
