@@ -1,3 +1,5 @@
+using System.IO;
+using System.Text;
 using JangJang.Core.Persona.Embedding;
 using JangJang.Core.Persona.Pipeline;
 
@@ -17,6 +19,21 @@ namespace JangJang.Core.Persona;
 public sealed class PersonaDialogueProvider : IDialogueProvider, IDisposable
 {
     private const int TopNCandidates = 5;
+
+    // ─── 진단 로깅 (임시 — 매칭 품질 디버그용) ───────────────────────────────
+    // 플래그 파일이 존재할 때만 기록:
+    //   %AppData%/JangJang/persona-debug.flag
+    // 로그 파일:
+    //   %AppData%/JangJang/persona-debug.log
+    // 진단 끝나면 플래그 파일 삭제하면 로그 쓰기 중단. 이 Provider 코드에서
+    // 진단 블록을 제거하려면 "DIAG-BLOCK" 주석으로 묶인 영역을 지우면 됨.
+    private static readonly string DiagFlagPath = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+        "JangJang", "persona-debug.flag");
+    private static readonly string DiagLogPath = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+        "JangJang", "persona-debug.log");
+    // ──────────────────────────────────────────────────────────────────────
 
     private readonly OnnxEmbeddingService _embedder;
     private readonly IContextCollector _contextCollector;
@@ -83,13 +100,19 @@ public sealed class PersonaDialogueProvider : IDialogueProvider, IDisposable
             // 3. 후보 선정
             var candidates = _candidateSelector.Select(narration, fullContext, TopNCandidates);
             if (candidates.Count == 0)
+            {
+                WriteDiagnostic(fullContext, narration, candidates, finalLine: null); // DIAG-BLOCK
                 return string.Empty; // 호출자가 폴백 처리
+            }
 
             // 4. 최종 한 줄
-            return _outputProcessor.Process(candidates, fullContext);
+            var result = _outputProcessor.Process(candidates, fullContext);
+            WriteDiagnostic(fullContext, narration, candidates, result); // DIAG-BLOCK
+            return result;
         }
-        catch
+        catch (Exception ex)
         {
+            WriteDiagnosticException(ex); // DIAG-BLOCK
             // 파이프라인 어느 지점이든 예외 발생 시 빈 문자열 반환 → 호출자가 폴백
             return string.Empty;
         }
@@ -101,4 +124,59 @@ public sealed class PersonaDialogueProvider : IDialogueProvider, IDisposable
         _embedder?.Dispose();
         _disposed = true;
     }
+
+    // ─── DIAG-BLOCK START ─────────────────────────────────────────────────
+    // 진단 로그. persona-debug.flag 파일이 있을 때만 쓰기. 진단 완료 시
+    // 이 블록(헬퍼 2개 + GetLine의 WriteDiagnostic/WriteDiagnosticException 호출 3곳)을
+    // 삭제하거나 플래그 파일만 지워도 무해하게 비활성화됨.
+    private static void WriteDiagnostic(
+        DialogueContext ctx,
+        string narration,
+        IReadOnlyList<SeedLine> candidates,
+        string? finalLine)
+    {
+        if (!File.Exists(DiagFlagPath)) return;
+        try
+        {
+            var sb = new StringBuilder();
+            sb.Append('[').Append(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")).Append("] ");
+            sb.Append($"State={ctx.State} Annoyance={ctx.Annoyance:F2} ");
+            sb.Append($"Session={FormatSeconds(ctx.SessionSeconds)} ");
+            sb.Append($"Idle={FormatSeconds(ctx.IdleSessionSeconds)} ");
+            sb.Append($"Today={FormatSeconds(ctx.TodaySeconds)}");
+            sb.AppendLine();
+            sb.Append("  Narration: ").AppendLine(narration);
+            sb.Append("  Candidates (top ").Append(candidates.Count).AppendLine("):");
+            for (int i = 0; i < candidates.Count; i++)
+            {
+                sb.Append("    ").Append(i + 1).Append(". ").AppendLine(candidates[i].Text);
+            }
+            sb.Append("  Final: ").AppendLine(finalLine ?? "(empty — fallback)");
+            sb.AppendLine();
+            File.AppendAllText(DiagLogPath, sb.ToString(), Encoding.UTF8);
+        }
+        catch
+        {
+            // 로그 기록 실패는 무시 (진단이 본 동작을 깨면 안 됨)
+        }
+    }
+
+    private static void WriteDiagnosticException(Exception ex)
+    {
+        if (!File.Exists(DiagFlagPath)) return;
+        try
+        {
+            var line = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] EXCEPTION: {ex.GetType().Name}: {ex.Message}{Environment.NewLine}{Environment.NewLine}";
+            File.AppendAllText(DiagLogPath, line, Encoding.UTF8);
+        }
+        catch { }
+    }
+
+    private static string FormatSeconds(int s)
+    {
+        if (s < 60) return $"{s}s";
+        if (s < 3600) return $"{s / 60}m{s % 60}s";
+        return $"{s / 3600}h{(s % 3600) / 60}m";
+    }
+    // ─── DIAG-BLOCK END ───────────────────────────────────────────────────
 }
