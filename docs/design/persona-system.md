@@ -30,10 +30,16 @@
 
 | 결정 사항 | 값 |
 |---|---|
-| 상황 매칭 방식 | 임베딩 기반 (bge-m3, ~500MB) |
+| 상황 매칭 방식 | 임베딩 기반 (`intfloat/multilingual-e5-small` ONNX, ~120MB) |
+| 임베딩 라이브러리 | `Microsoft.ML.OnnxRuntime` (Apache 2.0, MS 공식) |
+| 토크나이저 | `Microsoft.ML.Tokenizers` (SentencePiece, MS 공식) |
 | 이미지 요구 | 초상화 1장 필수 (치와와 5단 체계와 별도) |
 | 치와와 모드 공존 | 페르소나는 옵션, 자캐 = 치와와 완전 상위 집합 |
 | 페르소나 개수 | 단일 (한 번에 하나, 디렉토리 구조로 저장하여 확장 여지 보존) |
+
+> **기술 스택 피봇 노트** (Step 3.0 리서치 결과):
+> 초기 설계는 `LLamaSharp + bge-m3 GGUF`였으나, 리서치 결과 LLamaSharp/llama.cpp가 bge-m3의 XLMRobertaTokenizer를 지원하지 않음을 확인. 더 안전하고 가벼운 `Microsoft.ML.OnnxRuntime + multilingual-e5-small`로 피봇.
+> 장점: 모델 크기 540MB → 120MB, MS 공식 NuGet, SingleFile 호환 검증 부담 감소.
 
 ## 브랜치 정책
 
@@ -75,15 +81,18 @@ DefaultDialogueProvider          PersonaDialogueProvider
 
 ```
 %AppData%/JangJang/
-├── settings.json              (기존, PersonaEnabled 필드 추가)
-├── WorkLog.json               (기존)
+├── settings.json                (기존, PersonaEnabled 필드 추가)
+├── WorkLog.json                 (기존)
 ├── Models/
-│   └── bge-m3-Q4_K_M.gguf     (최초 1회 사용자 배치, 이후 불변)
+│   └── multilingual-e5-small/   (모델 폴더 — 사용자가 최초 1회 배치)
+│       ├── model.onnx
+│       ├── tokenizer.json
+│       └── (그 외 토크나이저 부속 파일)
 └── Personas/
     └── current/
-        ├── persona.json       (이름, 말투, 씨앗 대사 풀)
-        ├── portrait.png       (초상화 1장)
-        └── embeddings.bin     (씨앗 대사 임베딩 캐시)
+        ├── persona.json         (이름, 말투, 씨앗 대사 풀)
+        ├── portrait.png         (초상화 1장)
+        └── embeddings.bin       (씨앗 대사 임베딩 캐시)
 ```
 
 단일 페르소나지만 `current/` 디렉토리 구조로 저장 → 나중 다중 전환 시 해당 폴더 이름만 스위칭하면 됨.
@@ -92,22 +101,25 @@ DefaultDialogueProvider          PersonaDialogueProvider
 
 **배포 방식** — 릴리즈 페이지에 두 아티팩트 병치:
 - `JangJang-jakae.exe` — 프로그램 본체. 업데이트 대상
-- `bge-m3-Q4_K_M.gguf` — 임베딩 모델. **최초 1회만 다운로드, 이후 불변**
+- `multilingual-e5-small.zip` — 임베딩 모델 + 토크나이저 번들 (~120MB). **최초 1회만 다운로드, 이후 불변**
+
+zip 안에는 ONNX 모델 파일과 토크나이저 부속 파일들이 묶여 있다 (Hugging Face의 `intfloat/multilingual-e5-small` repo 또는 ONNX 변환본 기준).
 
 **사용자 설치 순서 (최초)**:
 1. 사용자는 릴리즈 페이지에서 두 파일을 모두 다운로드
-2. 프로그램 실행 → 자캐 모드 활성화 시 "모델 파일을 선택해주세요" 파일 피커 표시
-3. 사용자가 받은 `.gguf` 파일을 선택 → 앱이 `%AppData%/JangJang/Models/`로 자동 복사
-4. 이후 해당 위치에서 로드
+2. zip을 임의의 위치에 압축 해제
+3. 프로그램 실행 → 자캐 모드 활성화 시 "모델 폴더를 선택해주세요" 폴더 피커 표시
+4. 사용자가 압축 해제한 폴더 선택 → 앱이 `%AppData%/JangJang/Models/multilingual-e5-small/`로 복사
+5. 이후 해당 위치에서 로드
 
-**이후 업데이트**: 프로그램 본체(.exe)만 다운로드. 모델 파일은 이미 AppData에 존재하므로 건드리지 않음. 사용자는 모델을 재다운로드할 필요 없음.
+**이후 업데이트**: 프로그램 본체(.exe)만 다운로드. 모델 폴더는 이미 AppData에 존재하므로 건드리지 않음.
 
 **파일 탐색 순서** (앱 시작 시):
-1. `%AppData%/JangJang/Models/bge-m3-Q4_K_M.gguf` (표준 위치)
-2. 프로그램 본체와 같은 폴더의 `bge-m3-Q4_K_M.gguf` (포터블/개발 환경 폴백)
-3. 둘 다 없으면 → "모델 파일이 없습니다" UI + [릴리즈 페이지 열기] 버튼 + [파일 선택] 버튼
+1. `%AppData%/JangJang/Models/multilingual-e5-small/` (표준 위치)
+2. 프로그램 본체와 같은 폴더의 `multilingual-e5-small/` (포터블/개발 환경 폴백)
+3. 둘 다 없으면 → "모델 폴더가 없습니다" UI + [릴리즈 페이지 열기] 버튼 + [폴더 선택] 버튼
 
-**인앱 다운로더 없음**: 앱에 네트워크 다운로드 로직을 구현하지 않는다. 배포는 GitHub Release 등 외부 플랫폼에 의존. 앱은 파일 존재 여부만 체크.
+**인앱 다운로더 없음**: 앱에 네트워크 다운로드 로직을 구현하지 않는다. 배포는 GitHub Release 등 외부 플랫폼에 의존. 앱은 폴더 존재 여부만 체크.
 
 ## 변경 파일 목록
 
@@ -118,7 +130,7 @@ DefaultDialogueProvider          PersonaDialogueProvider
 | `src/JangJang/Core/Dialogue.cs` | 하드코딩 로직을 `DefaultDialogueProvider`로 이관. `GetLine()`은 현재 Provider에 위임 |
 | `src/JangJang/Core/AppSettings.cs` | `PersonaEnabled: bool` (기본 false) 추가 |
 | `src/JangJang/App.xaml.cs` | 시작 시 Provider 초기화 |
-| `src/JangJang/JangJang.csproj` | `LLamaSharp`, `LLamaSharp.Backend.Cpu` NuGet 추가 (자캐 브랜치에만) |
+| `src/JangJang/JangJang.csproj` | `Microsoft.ML.OnnxRuntime`, `Microsoft.ML.Tokenizers` NuGet 추가 (자캐 브랜치에만) + `IncludeNativeLibrariesForSelfExtract=true` |
 
 ### 자캐 전용 신규 파일 (격리 폴더)
 
@@ -136,7 +148,7 @@ DefaultDialogueProvider          PersonaDialogueProvider
 - (나 확장 시) `LlmVariationOutputProcessor.cs`
 
 **임베딩 서비스**
-- `src/JangJang/Core/Persona/Embedding/BgeM3Service.cs` — LLamaSharp 래퍼
+- `src/JangJang/Core/Persona/Embedding/OnnxEmbeddingService.cs` — Microsoft.ML.OnnxRuntime 래퍼 (모델 로드/임베딩/코사인)
 - `src/JangJang/Core/Persona/Embedding/EmbeddingCache.cs` — 씨앗 대사 벡터 영속화
 
 **페르소나 데이터**
@@ -166,13 +178,11 @@ DefaultDialogueProvider          PersonaDialogueProvider
 2. 샘플 `persona.json` 수동 작성 → 로드/저장 round-trip 확인
 
 ### Step 3 — 임베딩 서비스
-1. **프로토타입 검증** (최우선): 빈 .NET 7 콘솔 앱 + LLamaSharp + bge-m3 로드 + SingleFile 빌드 → 실행 확인
-   - 통과 시 → 2-A 방식 확정 (SingleFile 유지 + `IncludeNativeLibrariesForSelfExtract`)
-   - 실패 시 → 2-B 방식으로 피봇 (자캐 브랜치만 폴더 배포)
-2. LLamaSharp NuGet 추가 (`LLamaSharp`, `LLamaSharp.Backend.Cpu`)
-3. `JangJang.csproj`에 `<IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>` 추가 (2-A 경로)
-4. bge-m3-Q4_K_M.gguf 개발용 확보 (Hugging Face에서 직접 다운로드, 개발 중 임시 위치 지정)
-5. `BgeM3Service` — 로드/임베딩/코사인 유사도. 모델 경로 탐색 로직 (AppData/Models → exe 폴더 → 실패 시 UI 요청)
+1. **사전 리서치 (3.0)** — LLamaSharp + bge-m3 가능성 검증. **결과: 막힘.** Microsoft.ML.OnnxRuntime + multilingual-e5-small로 피봇
+2. `Microsoft.ML.OnnxRuntime` + `Microsoft.ML.Tokenizers` NuGet 추가
+3. `JangJang.csproj`에 `<IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>` 추가
+4. 모델 파일 확보: Hugging Face `intfloat/multilingual-e5-small` ONNX 변환본 다운로드 → 개발 중 임시 위치 지정
+5. `OnnxEmbeddingService` — 모델 로드, 토큰화, 임베딩 추론, 코사인 유사도. 모델 폴더 탐색 로직 (AppData/Models → exe 폴더 → 실패 시 UI 요청)
 6. `EmbeddingCache` — 씨앗 대사 hash 기반 무효화
 7. 스탠드얼론 테스트: 5개 대사로 매칭 검증
 
@@ -209,7 +219,7 @@ MVP 완성. 개발자 본인이 자신의 자캐로 **2-4주 실사용**. 문제
 ## 재사용할 기존 코드
 
 - `src/JangJang/Core/Dialogue.cs` → `DefaultDialogueProvider`로 로직 그대로 이관
-- `src/JangJang/Core/ActivityMonitor.cs` — `SessionSeconds`, `IdleSessionSeconds`, `AnnoyanceLevel`, `IdleSeconds` → `DefaultContextCollector`에서 그대로 읽음
+- `src/JangJang/Core/ActivityMonitor.cs` — `SessionSeconds`, `IdleSessionSeconds`, `AnnoyanceLevel` → `DefaultContextCollector`에서 그대로 읽음
 - `src/JangJang/Core/WorkLog.cs` — `TodaySeconds` → `DefaultContextCollector` 사용
 - `src/JangJang/Core/PetState.cs` enum → `DialogueContext.State` 필드
 - `src/JangJang/ViewModels/PetViewModel.cs:111` — `Dialogue.GetLine()` 호출 방식 변화 없음 (Provider 뒤에 숨음)
@@ -218,15 +228,16 @@ MVP 완성. 개발자 본인이 자신의 자캐로 **2-4주 실사용**. 문제
 
 ## 엣지 케이스 / 주의사항
 
-1. **bge-m3 로드 실패** (네트워크 없음, 디스크 공간 부족 등) → `PersonaDialogueProvider` 생성 실패 → 자동으로 `DefaultDialogueProvider` 폴백. 사용자에게 토스트 알림
+1. **임베딩 모델 로드 실패** (모델 폴더 없음, 파일 손상 등) → `PersonaDialogueProvider` 생성 실패 → 자동으로 `DefaultDialogueProvider` 폴백. 사용자에게 토스트 알림
 2. **씨앗 대사 풀이 비었을 때** → 후보 0개 → 치와와 기본 대사로 임시 폴백. UI에 "대사를 추가하세요" 경고
 3. **상황 설명이 모두 비어있을 때 (C 모드)** → `EmbeddingCandidateSelector`가 자동으로 대사 본문 벡터 매칭으로 전환 (내부 플래그)
-4. **임베딩 계산 지연**: bge-m3 CPU 추론 ~100-300ms 예상. 알림 한두 초 지연은 UX 영향 적음. 씨앗 대사 임베딩은 **캐시 필수** (앱 시작 시 재계산 금지)
+4. **임베딩 계산 지연**: multilingual-e5-small CPU 추론 ~50-150ms 예상 (모델이 작아서 빠름). 알림 한두 초 지연은 UX 영향 적음. 씨앗 대사 임베딩은 **캐시 필수** (앱 시작 시 재계산 금지)
 5. **대사 반복감 방지** (전제 C의 핵심 리스크): `PassthroughOutputProcessor`에 최근 N개 큐 → 최근 출력 대사는 가중치 낮춤
 6. **초상화 없음**: 치와와 기본 이미지 폴백
-7. **모델 파일 부재**: 자캐 모드 활성화 시 모델 파일 탐색 → 없으면 "모델 파일이 필요해요. 릴리즈 페이지에서 받은 `bge-m3-Q4_K_M.gguf` 파일을 선택해주세요." UI 표시. 파일 선택 시 `%AppData%/JangJang/Models/`로 자동 복사. 인앱 다운로더 없음
+7. **모델 폴더 부재**: 자캐 모드 활성화 시 모델 폴더 탐색 → 없으면 "모델 폴더가 필요해요. 릴리즈 페이지에서 받은 zip을 압축 해제한 폴더를 선택해주세요." UI 표시. 폴더 선택 시 `%AppData%/JangJang/Models/`로 자동 복사. 인앱 다운로더 없음
 8. **PersonaEnabled 런타임 전환**: 재시작 요구 (임베딩 서비스 초기화 비용 때문)
 9. **씨앗 대사의 내용 위험**: 사용자가 쓰는 내용 그대로 노출되므로, 개인 정보/민감 내용이 들어갈 수 있음 → 로그나 오류 보고에 대사 내용을 포함시키지 않음
+10. **e5 모델의 입력 prefix 규약**: multilingual-e5 시리즈는 입력에 `"query: "` 또는 `"passage: "` 접두사를 붙이는 규약이 있음. 일관된 규칙(예: 상황 서술문은 `query:`, 씨앗 대사는 `passage:`)을 적용해야 매칭 품질이 보장됨. `OnnxEmbeddingService`에서 처리
 
 ## 테스트 방법
 
@@ -240,7 +251,7 @@ MVP 완성. 개발자 본인이 자신의 자캐로 **2-4주 실사용**. 문제
 
 ### 최소 단위 자동 테스트 (옵션)
 - `PersonaStore` round-trip
-- `BgeM3Service` 코사인 계산 sanity check
+- `OnnxEmbeddingService` 코사인 계산 sanity check
 - `ContextNarrator` 규칙 기반 문장 생성 스냅샷
 
 ### 진짜 테스트 — 자기 검증 루프 (2-4주)
@@ -251,8 +262,8 @@ MVP 완성. 개발자 본인이 자신의 자캐로 **2-4주 실사용**. 문제
 
 ## 결정된 사항 (기존 열린 질문 1-3)
 
-1. **bge-m3 모델 배포 전략**: **별도 파일로 배포.** 릴리즈 페이지에 프로그램 본체와 모델 파일 두 아티팩트 병치. 사용자는 최초 1회 두 파일 모두 다운로드 후, 자캐 모드 활성화 시 파일 피커로 모델 위치 지정 → 앱이 `%AppData%/JangJang/Models/`로 복사. 이후 프로그램 업데이트는 본체만 받으면 됨. 인앱 다운로더 없음. (상세: "저장 구조 > 모델 파일 배포 및 위치" 섹션)
-2. **LLamaSharp + win-x64 self-contained 호환성**: **검증 유예.** Step 3 초입에 최소 콘솔 프로토타입으로 실측. 통과 시 2-A(SingleFile 유지 + `IncludeNativeLibrariesForSelfExtract`), 실패 시 2-B(자캐 브랜치만 폴더 배포로 피봇).
+1. **모델 배포 전략**: **별도 파일로 배포.** 릴리즈 페이지에 프로그램 본체와 모델 zip 두 아티팩트 병치. 사용자는 최초 1회 두 파일 모두 다운로드 + 모델 zip 압축 해제 후, 자캐 모드 활성화 시 폴더 피커로 모델 폴더 지정 → 앱이 `%AppData%/JangJang/Models/`로 복사. 이후 프로그램 업데이트는 본체만 받으면 됨. 인앱 다운로더 없음. (상세: "저장 구조 > 모델 파일 배포 및 위치" 섹션)
+2. **임베딩 라이브러리 + 모델**: **`Microsoft.ML.OnnxRuntime` + `intfloat/multilingual-e5-small` ONNX**. 초기 LLamaSharp+bge-m3 가설은 Step 3.0 리서치에서 막힘 확인 후 피봇. ONNX Runtime은 MS 공식이라 SingleFile 호환 검증 부담 매우 낮음 (`IncludeNativeLibrariesForSelfExtract=true`만 추가).
 3. **브랜치 이름**: **`jakae` 확정.**
 
 ## 열린 질문 (남아있음, `/build` 중 해결)
@@ -260,7 +271,8 @@ MVP 완성. 개발자 본인이 자신의 자캐로 **2-4주 실사용**. 문제
 4. **말투 프리셋의 필요성**: (가) MVP에선 말투가 씨앗 대사에 녹아있음. "말투 설정" 필드가 추가 가치가 있는가? → **Step 6 시작 시 재평가**
 5. **페르소나 생성 마법사 vs 일반 창**: 첫 실행 시 강제 마법사 vs 사용자 자율. → **Step 6에서 결정**
 6. **페르소나 이미지 표시 방식**: 치와와의 상태별 이미지와 어떻게 병치/대체할 것인가. 초상화 1장만 있을 때 Happy/Alert/Annoyed를 어떻게 표현할지 (예: 초상화 + 상태별 프레임 효과, 또는 치와와 이미지를 그대로 쓰되 대사만 페르소나화 등). → **Step 6에서 결정**
+7. **`Microsoft.ML.Tokenizers`로 e5 SentencePiece 토크나이저 처리 검증**: Step 3 구현 중 실측 필요. 동작 안 하면 대안: ① ONNX 그래프 안에 토크나이저를 베이크한 변환본 사용, ② BlingFire 같은 경량 토크나이저 라이브러리, ③ multilingual-e5 대신 BertTokenizer 기반 모델로 재피봇 (한국어 품질 손실 감수). → **Step 3 구현 중 결정**
 
 ---
 
-**다음 단계**: `/build` 로 구현 시작.
+**다음 단계**: `/build` Step 3 구현 시작 (Microsoft.ML.OnnxRuntime + multilingual-e5-small).
