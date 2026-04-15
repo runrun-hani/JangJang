@@ -39,6 +39,11 @@ public sealed class OnnxEmbeddingService : IDisposable
     /// 주어진 폴더에서 모델 + 토크나이저를 로드한다.
     /// 파일이 없거나 로드 실패 시 예외를 던진다 — 호출자(PersonaDialogueProvider)는
     /// 예외를 잡아 DefaultDialogueProvider로 폴백해야 한다.
+    ///
+    /// 생성자 안에서 _session을 먼저 할당한 뒤 토크나이저를 로드하는 구조상,
+    /// 토크나이저 로드가 실패하면 _session이 네이티브 자원 누수가 될 수 있다.
+    /// 본문 전체를 try로 감싸고 실패 시 수동으로 _session을 해제한다.
+    /// (C#은 생성자 예외 시 IDisposable을 자동 호출하지 않는다.)
     /// </summary>
     public OnnxEmbeddingService(string modelFolderPath)
     {
@@ -50,22 +55,33 @@ public sealed class OnnxEmbeddingService : IDisposable
         if (!File.Exists(tokenizerPath))
             throw new FileNotFoundException($"토크나이저 파일이 없습니다: {tokenizerPath}");
 
-        _session = new InferenceSession(modelPath);
-
-        // 토크나이저 로드. e5는 BOS=<s>, EOS=</s>를 모두 사용하는 XLM-RoBERTa 규약.
-        using (var tokenizerStream = File.OpenRead(tokenizerPath))
+        InferenceSession? session = null;
+        try
         {
-            _tokenizer = SentencePieceTokenizer.Create(
-                tokenizerStream,
-                addBeginningOfSentence: true,
-                addEndOfSentence: true);
+            session = new InferenceSession(modelPath);
+
+            // 토크나이저 로드. e5는 BOS=<s>, EOS=</s>를 모두 사용하는 XLM-RoBERTa 규약.
+            SentencePieceTokenizer tokenizer;
+            using (var tokenizerStream = File.OpenRead(tokenizerPath))
+            {
+                tokenizer = SentencePieceTokenizer.Create(
+                    tokenizerStream,
+                    addBeginningOfSentence: true,
+                    addEndOfSentence: true);
+            }
+
+            // 이 시점까지 모두 성공 → 필드에 커밋
+            _session = session;
+            _tokenizer = tokenizer;
+            _needsTokenTypeIds = _session.InputMetadata.ContainsKey("token_type_ids");
+            _hiddenSize = InferHiddenSize(_session) ?? 384;
+            session = null; // 성공, finally에서 해제하지 않도록
         }
-
-        // 모델 입력에 token_type_ids가 있는지 동적 확인 (XLM-R 계열은 보통 없지만 ONNX export에 따라 다름)
-        _needsTokenTypeIds = _session.InputMetadata.ContainsKey("token_type_ids");
-
-        // 출력 텐서의 마지막 차원에서 hidden size 추출. 동적 차원이면 e5-small 기본값(384) 사용.
-        _hiddenSize = InferHiddenSize(_session) ?? 384;
+        finally
+        {
+            // 필드에 커밋되기 전 실패하면 session은 여전히 로컬 변수 → 여기서 해제
+            session?.Dispose();
+        }
     }
 
     private static int? InferHiddenSize(InferenceSession session)

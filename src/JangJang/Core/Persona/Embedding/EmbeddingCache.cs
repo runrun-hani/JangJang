@@ -85,11 +85,24 @@ public static class EmbeddingCache
     /// <summary>
     /// 임베딩 dictionary를 캐시 파일에 저장한다. 디렉토리가 없으면 생성.
     /// 실패해도 조용히 무시 (다음 실행 시 재계산되면 됨).
+    ///
+    /// 쓰기 시작 전에 모든 엔트리의 차원을 먼저 검증한다 — 중간에 throw되어
+    /// 파일이 부분 기록된 상태로 남는 것을 방지. 잘못된 엔트리는 그냥 스킵.
     /// </summary>
     public static void Save(string cachePath, int dimension, IReadOnlyDictionary<long, float[]> entries)
     {
         try
         {
+            // 1. 사전 검증: 차원이 맞는 엔트리만 추려냄. 쓰기 시작 전에 끝내야 함.
+            var valid = new List<KeyValuePair<long, float[]>>(entries.Count);
+            foreach (var kv in entries)
+            {
+                if (kv.Value != null && kv.Value.Length == dimension)
+                    valid.Add(kv);
+                // 차원 불일치 엔트리는 조용히 스킵 (호출자가 해시 미스로 재계산)
+            }
+
+            // 2. 파일 I/O
             var dir = Path.GetDirectoryName(cachePath);
             if (!string.IsNullOrEmpty(dir))
                 Directory.CreateDirectory(dir);
@@ -100,13 +113,11 @@ public static class EmbeddingCache
             bw.Write(Magic);
             bw.Write(CurrentVersion);
             bw.Write(dimension);
-            bw.Write(entries.Count);
+            bw.Write(valid.Count);
 
-            foreach (var kv in entries)
+            foreach (var kv in valid)
             {
                 bw.Write(kv.Key);
-                if (kv.Value.Length != dimension)
-                    throw new InvalidDataException($"벡터 차원 불일치: {kv.Value.Length} vs {dimension}");
                 for (int d = 0; d < dimension; d++)
                 {
                     bw.Write(kv.Value[d]);
