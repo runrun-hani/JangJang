@@ -27,6 +27,12 @@ public class AppSettings
     public string TargetProcessName { get; set; } = "CLIPStudioPaint";
     public string TargetDisplayName { get; set; } = "Clip Studio Paint";
 
+    /// <summary>
+    /// 자캐 페르소나 모드 활성화 여부. true이고 페르소나 데이터 + 임베딩 모델이 모두 준비되어 있을 때만
+    /// PersonaDialogueProvider가 동작한다. 둘 중 하나라도 부재하면 자동으로 기본(치와와) Provider로 폴백.
+    /// </summary>
+    public bool PersonaEnabled { get; set; }
+
     public int IdleThresholdSeconds => IdlePreset == IdlePreset.Custom
         ? CustomIdleMinutes * 60
         : IdlePreset.ToMinutes() * 60;
