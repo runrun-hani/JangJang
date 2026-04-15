@@ -12,6 +12,16 @@
 
         <Separator Margin="0,12,0,12"/>
 
+        <TextBlock Text="자캐 페르소나 (실험적)" FontWeight="Bold" FontSize="14"/>
+        <CheckBox x:Name="PersonaEnabledCheck" Content="페르소나 모드 활성화" Margin="0,4,0,2"/>
+        <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+            <Button Content="자캐 페르소나 편집..." Click="OnEditPersonaClick" Padding="8,2"/>
+        </StackPanel>
+        <TextBlock Text="변경은 재시작 후 적용. 모델 파일과 페르소나가 모두 준비됐을 때만 동작합니다."
+                   FontSize="10" Foreground="Gray" TextWrapping="Wrap" Margin="0,4,0,0"/>
+
+        <Separator Margin="0,12,0,12"/>
+
         <TextBlock Text="감시 대상 프로그램" FontWeight="Bold" FontSize="14"/>
         <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
             <TextBox x:Name="TargetProcessBox" Width="180" Margin="0,0,8,0"/>

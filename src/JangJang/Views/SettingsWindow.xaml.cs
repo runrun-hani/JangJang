@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Imaging;
 using JangJang.Core;
+using JangJang.Views.Persona;
 using OpenFileDialog = Microsoft.Win32.OpenFileDialog;
 using ListBox = System.Windows.Controls.ListBox;
 using Button = System.Windows.Controls.Button;
@@ -39,8 +40,15 @@ public partial class SettingsWindow : Window
         _wakeUpPath = settings.WakeUpImagePath;
         AutoStartCheck.IsChecked = AutoStartHelper.IsAutoStartEnabled();
         NoRestCheck.IsChecked = settings.NoRestMode;
+        PersonaEnabledCheck.IsChecked = settings.PersonaEnabled;
 
         RefreshPreviews();
+    }
+
+    private void OnEditPersonaClick(object sender, RoutedEventArgs e)
+    {
+        var win = new PersonaWindow { Owner = this };
+        win.ShowDialog();
     }
 
     private void RefreshPreviews()
@@ -210,6 +218,7 @@ public partial class SettingsWindow : Window
 
         _settings.StartWithWindows = AutoStartCheck.IsChecked == true;
         _settings.NoRestMode = NoRestCheck.IsChecked == true;
+        _settings.PersonaEnabled = PersonaEnabledCheck.IsChecked == true;
         AutoStartHelper.SetAutoStart(_settings.StartWithWindows);
 
         _settings.Save();
