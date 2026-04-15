@@ -91,14 +91,11 @@ public class TensorIndexingDiagnosticTests
             _out.WriteLine($"  position[{t}]: [{string.Join(", ", first3.Select(f => f.ToString("F4")))}]");
         }
 
-        // 방법 C: GetEnumerator (순서 보장 확인)
+        // 방법 C: GetValue (flat index)
         _out.WriteLine("");
-        _out.WriteLine("=== 방법 C: 1D 인덱서 (tensor[i]의 i번째 float) ===");
-        // tensor[linearIndex] 형태로 시도
+        _out.WriteLine("=== 방법 C: GetValue(i) — flat index ===");
         try
         {
-            // Tensor<T>는 int flat index indexer 지원 가능
-            var testOffset = 0; // position[0][0..2]
             var via1d = new[] { tensor.GetValue(0), tensor.GetValue(1), tensor.GetValue(2) };
             _out.WriteLine($"  GetValue(0,1,2): [{string.Join(", ", via1d.Select(f => f.ToString("F4")))}]");
         }
