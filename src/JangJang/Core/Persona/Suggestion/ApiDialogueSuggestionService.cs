@@ -31,10 +31,10 @@ public sealed class ApiDialogueSuggestionService : IDialogueSuggestionService
 
     public static ApiDialogueSuggestionService? FromSettings(AppSettings settings)
     {
-        if (string.IsNullOrWhiteSpace(settings.SuggestionApiKey))
+        if (string.IsNullOrWhiteSpace(settings.SuggestionApiKeyDecrypted))
             return null;
         return new ApiDialogueSuggestionService(
-            settings.SuggestionApiKey,
+            settings.SuggestionApiKeyDecrypted,
             settings.SuggestionApiBaseUrl,
             settings.SuggestionApiModel);
     }

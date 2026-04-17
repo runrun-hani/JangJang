@@ -18,6 +18,8 @@ namespace JangJang.Views.Persona;
 
 public partial class PersonaWindow : Window
 {
+    private static readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(15) };
+
     private readonly ObservableCollection<SeedLine> _allSeeds = new();
     private readonly ObservableCollection<SeedLine> _filteredSeeds = new();
     private readonly List<PersonaPreset> _presets;
@@ -433,7 +435,7 @@ public partial class PersonaWindow : Window
     private async void OnAiSuggestClick(object sender, RoutedEventArgs e)
     {
         // API 키 확인
-        if (string.IsNullOrWhiteSpace(_settings.SuggestionApiKey))
+        if (string.IsNullOrWhiteSpace(_settings.SuggestionApiKeyDecrypted))
         {
             SuggestionPanel.Visibility = Visibility.Visible;
             SuggestionPanel.BringIntoView();
@@ -600,7 +602,7 @@ public partial class PersonaWindow : Window
         var key = InlineApiKeyBox.Text?.Trim();
         if (string.IsNullOrWhiteSpace(key)) return;
 
-        _settings.SuggestionApiKey = key;
+        _settings.SuggestionApiKeyDecrypted = key;
         _settings.Save();
         ApiKeyPrompt.Visibility = Visibility.Collapsed;
         MessageBox.Show("API 키가 저장되었습니다.", "자캐 페르소나", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -770,7 +772,7 @@ public partial class PersonaWindow : Window
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(_settings.SuggestionApiKey))
+        if (string.IsNullOrWhiteSpace(_settings.SuggestionApiKeyDecrypted))
         {
             MessageBox.Show("설정 창에서 Gemini API 키를 먼저 등록해주세요.", "상황 생성",
                 MessageBoxButton.OK, MessageBoxImage.Information);
@@ -802,7 +804,7 @@ public partial class PersonaWindow : Window
 
     private async Task<string?> GenerateSituationViaApi(string dialogueText, PetState state)
     {
-        var key = _settings.SuggestionApiKey!;
+        var key = _settings.SuggestionApiKeyDecrypted!;
         var model = _settings.SuggestionApiModel ?? "gemini-2.0-flash";
         var url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}";
 
@@ -821,21 +823,27 @@ public partial class PersonaWindow : Window
 
         var body = new { contents = new[] { new { parts = new[] { new { text = prompt } } } } };
 
-        using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
         var json = JsonSerializer.Serialize(body);
-        var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
-        var response = await client.PostAsync(url, content);
+        var httpContent = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+        var response = await _http.PostAsync(url, httpContent);
         var responseText = await response.Content.ReadAsStringAsync();
+
+        if (!response.IsSuccessStatusCode)
+        {
+            // 구조화된 API 에러 메시지 추출 시도
+            try
+            {
+                using var errorDoc = JsonDocument.Parse(responseText);
+                if (errorDoc.RootElement.TryGetProperty("error", out var apiErr) &&
+                    apiErr.TryGetProperty("message", out var msg))
+                    throw new InvalidOperationException(msg.GetString());
+            }
+            catch (JsonException) { }
+            throw new HttpRequestException($"API 오류 ({(int)response.StatusCode})");
+        }
 
         using var doc = JsonDocument.Parse(responseText);
         var root = doc.RootElement;
-
-        // API 에러 응답 처리
-        if (root.TryGetProperty("error", out var error))
-        {
-            var msg = error.TryGetProperty("message", out var m) ? m.GetString() : "알 수 없는 API 오류";
-            throw new InvalidOperationException(msg);
-        }
 
         if (!root.TryGetProperty("candidates", out var candidates) || candidates.GetArrayLength() == 0)
             return null;

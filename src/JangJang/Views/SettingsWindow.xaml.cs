@@ -46,8 +46,8 @@ public partial class SettingsWindow : Window
         PersonaEnabledCheck.IsChecked = settings.PersonaEnabled;
 
         // API 설정 초기화
-        ApiKeyMasked.Password = settings.SuggestionApiKey ?? string.Empty;
-        ApiKeyVisible.Text = settings.SuggestionApiKey ?? string.Empty;
+        ApiKeyMasked.Password = settings.SuggestionApiKeyDecrypted ?? string.Empty;
+        ApiKeyVisible.Text = settings.SuggestionApiKeyDecrypted ?? string.Empty;
         if (!string.IsNullOrEmpty(settings.SuggestionApiModel))
             ModelCombo.Items.Add(settings.SuggestionApiModel);
         ModelCombo.Text = settings.SuggestionApiModel ?? "";
@@ -346,34 +346,46 @@ public partial class SettingsWindow : Window
         ModelCombo.Items.Clear();
         ModelCombo.IsEnabled = false;
 
-        var models = await ApiDialogueSuggestionService.DiscoverAvailableModelsAsync(key,
-            progress => Dispatcher.Invoke(() =>
+        try
+        {
+            var models = await ApiDialogueSuggestionService.DiscoverAvailableModelsAsync(key,
+                progress => Dispatcher.Invoke(() =>
+                {
+                    ModelCombo.Items.Clear();
+                    ModelCombo.Items.Add(progress);
+                    ModelCombo.SelectedIndex = 0;
+                }));
+
+            ModelCombo.Items.Clear();
+
+            if (models.Count == 0)
             {
-                ModelCombo.Items.Clear();
-                ModelCombo.Items.Add(progress);
+                ModelCombo.Items.Add("(사용 가능한 모델 없음)");
                 ModelCombo.SelectedIndex = 0;
-            }));
+                return;
+            }
 
-        ModelCombo.Items.Clear();
-        ModelCombo.IsEnabled = true;
-
-        if (models.Count == 0)
+            int defaultIdx = 0;
+            var current = _settings.SuggestionApiModel;
+            for (int i = 0; i < models.Count; i++)
+            {
+                var (name, recommended) = models[i];
+                var display = recommended ? $"{name} (추천)" : name;
+                ModelCombo.Items.Add(new ComboBoxItem { Content = display, Tag = name });
+                if (name == current) defaultIdx = i;
+            }
+            ModelCombo.SelectedIndex = defaultIdx;
+        }
+        catch (Exception ex)
         {
-            ModelCombo.Items.Add("(사용 가능한 모델 없음)");
+            ModelCombo.Items.Clear();
+            ModelCombo.Items.Add($"(오류: {ex.Message})");
             ModelCombo.SelectedIndex = 0;
-            return;
         }
-
-        int defaultIdx = 0;
-        var current = _settings.SuggestionApiModel;
-        for (int i = 0; i < models.Count; i++)
+        finally
         {
-            var (name, recommended) = models[i];
-            var display = recommended ? $"{name} (추천)" : name;
-            ModelCombo.Items.Add(new ComboBoxItem { Content = display, Tag = name });
-            if (name == current) defaultIdx = i;
+            ModelCombo.IsEnabled = true;
         }
-        ModelCombo.SelectedIndex = defaultIdx;
     }
 
     private async void OnTestApiKeyClick(object sender, RoutedEventArgs e)
@@ -385,17 +397,20 @@ public partial class SettingsWindow : Window
             return;
         }
 
-        var model = ModelCombo.SelectedItem is ComboBoxItem ci ? ci.Tag as string : ModelCombo.SelectedItem as string;
-        var service = new ApiDialogueSuggestionService(key, model: model);
-        var error = await service.TestConnectionAsync();
+        try
+        {
+            var model = ModelCombo.SelectedItem is ComboBoxItem ci ? ci.Tag as string : ModelCombo.SelectedItem as string;
+            var service = new ApiDialogueSuggestionService(key, model: model);
+            var error = await service.TestConnectionAsync();
 
-        if (error == null)
-        {
-            MessageBox.Show("연결 성공!", "테스트", MessageBoxButton.OK, MessageBoxImage.Information);
+            if (error == null)
+                MessageBox.Show("연결 성공!", "테스트", MessageBoxButton.OK, MessageBoxImage.Information);
+            else
+                MessageBox.Show($"연결 실패:\n{error}", "테스트", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
-        else
+        catch (Exception ex)
         {
-            MessageBox.Show($"연결 실패:\n{error}", "테스트", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show($"테스트 실패:\n{ex.Message}", "테스트", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
@@ -435,7 +450,7 @@ public partial class SettingsWindow : Window
 
         // API 설정
         var apiKey = GetApiKey();
-        _settings.SuggestionApiKey = string.IsNullOrWhiteSpace(apiKey) ? null : apiKey;
+        _settings.SuggestionApiKeyDecrypted = string.IsNullOrWhiteSpace(apiKey) ? null : apiKey;
         string? selectedModel = ModelCombo.SelectedItem is ComboBoxItem ci ? ci.Tag as string : ModelCombo.SelectedItem as string;
         if (!string.IsNullOrEmpty(selectedModel) && !selectedModel.StartsWith("("))
             _settings.SuggestionApiModel = selectedModel;

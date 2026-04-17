@@ -1,5 +1,8 @@
 using System.IO;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace JangJang.Core;
 
@@ -36,8 +39,28 @@ public class AppSettings
     /// <summary>AI 추천 API 프로바이더 (예: "gemini", "groq", "custom")</summary>
     public string SuggestionApiProvider { get; set; } = "gemini";
 
-    /// <summary>API 키 (무료 계정에서 발급)</summary>
+    /// <summary>DPAPI로 암호화된 API 키 (base64). JSON 직렬화 대상.</summary>
+    public string? SuggestionApiKeyProtected { get; set; }
+
+    /// <summary>[레거시] 평문 API 키. 기존 settings.json 마이그레이션용. 로드 후 암호화로 전환.</summary>
     public string? SuggestionApiKey { get; set; }
+
+    /// <summary>복호화된 API 키. 메모리에서만 사용, JSON에 저장되지 않음.</summary>
+    [JsonIgnore]
+    public string? SuggestionApiKeyDecrypted
+    {
+        get
+        {
+            if (!string.IsNullOrEmpty(SuggestionApiKeyProtected))
+                return DecryptApiKey(SuggestionApiKeyProtected);
+            return SuggestionApiKey; // 레거시 폴백
+        }
+        set
+        {
+            SuggestionApiKeyProtected = string.IsNullOrEmpty(value) ? null : EncryptApiKey(value);
+            SuggestionApiKey = null; // 레거시 필드 제거
+        }
+    }
 
     /// <summary>커스텀 base URL (고급 사용자용, null이면 프로바이더 기본값)</summary>
     public string? SuggestionApiBaseUrl { get; set; }
@@ -70,10 +93,35 @@ public class AppSettings
     {
         try
         {
+            // 평문 레거시 키가 남아있으면 암호화로 마이그레이션
+            if (!string.IsNullOrEmpty(SuggestionApiKey) && string.IsNullOrEmpty(SuggestionApiKeyProtected))
+                SuggestionApiKeyDecrypted = SuggestionApiKey;
+
             Directory.CreateDirectory(SettingsDir);
             var json = JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true });
             File.WriteAllText(SettingsPath, json);
         }
         catch { }
+    }
+
+    private static string EncryptApiKey(string plainText)
+    {
+        var bytes = Encoding.UTF8.GetBytes(plainText);
+        var encrypted = ProtectedData.Protect(bytes, null, DataProtectionScope.CurrentUser);
+        return Convert.ToBase64String(encrypted);
+    }
+
+    private static string? DecryptApiKey(string base64)
+    {
+        try
+        {
+            var encrypted = Convert.FromBase64String(base64);
+            var decrypted = ProtectedData.Unprotect(encrypted, null, DataProtectionScope.CurrentUser);
+            return Encoding.UTF8.GetString(decrypted);
+        }
+        catch
+        {
+            return null;
+        }
     }
 }
