@@ -18,7 +18,11 @@ namespace JangJang.Core.Persona;
 /// </summary>
 public sealed class PersonaDialogueProvider : IDialogueProvider, IDisposable
 {
-    private const int TopNCandidates = 5;
+    /// <summary>
+    /// 후보 수 제한 없음 — 해당 상태의 모든 대사를 스코어링하여 OutputProcessor에 전달.
+    /// OutputProcessor의 가중치 랜덤 + 반복 방지가 다양성을 보장한다.
+    /// </summary>
+    private const int TopNCandidates = int.MaxValue;
 
     // ─── 진단 로깅 (임시 — 매칭 품질 디버그용) ───────────────────────────────
     // 플래그 파일이 존재할 때만 기록:
@@ -34,6 +38,9 @@ public sealed class PersonaDialogueProvider : IDialogueProvider, IDisposable
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
         "JangJang", "persona-debug.log");
     // ──────────────────────────────────────────────────────────────────────
+
+    /// <summary>디버그 모드 활성 시 파이프라인 결과를 UI로 전달하는 이벤트.</summary>
+    public static event Action<Pipeline.DebugEntry>? OnDebugEntry;
 
     private readonly OnnxEmbeddingService _embedder;
     private readonly IContextCollector _contextCollector;
@@ -102,12 +109,14 @@ public sealed class PersonaDialogueProvider : IDialogueProvider, IDisposable
             if (candidates.Count == 0)
             {
                 WriteDiagnostic(fullContext, narration, candidates, finalLine: null); // DIAG-BLOCK
+                OnDebugEntry?.Invoke(new Pipeline.DebugEntry(DateTime.Now, fullContext, narration, candidates, null));
                 return string.Empty; // 호출자가 폴백 처리
             }
 
             // 4. 최종 한 줄
             var result = _outputProcessor.Process(candidates, fullContext);
             WriteDiagnostic(fullContext, narration, candidates, result); // DIAG-BLOCK
+            OnDebugEntry?.Invoke(new Pipeline.DebugEntry(DateTime.Now, fullContext, narration, candidates, result));
             return result;
         }
         catch (Exception ex)

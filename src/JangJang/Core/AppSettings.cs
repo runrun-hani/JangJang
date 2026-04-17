@@ -33,6 +33,21 @@ public class AppSettings
     /// </summary>
     public bool PersonaEnabled { get; set; }
 
+    /// <summary>AI 추천 API 프로바이더 (예: "gemini", "groq", "custom")</summary>
+    public string SuggestionApiProvider { get; set; } = "gemini";
+
+    /// <summary>API 키 (무료 계정에서 발급)</summary>
+    public string? SuggestionApiKey { get; set; }
+
+    /// <summary>커스텀 base URL (고급 사용자용, null이면 프로바이더 기본값)</summary>
+    public string? SuggestionApiBaseUrl { get; set; }
+
+    /// <summary>모델 이름 (null이면 프로바이더 기본값)</summary>
+    public string? SuggestionApiModel { get; set; }
+
+    /// <summary>디버그 모드 — 페르소나 파이프라인 모니터링 창 활성화</summary>
+    public bool DebugMode { get; set; }
+
     public int IdleThresholdSeconds => IdlePreset == IdlePreset.Custom
         ? CustomIdleMinutes * 60
         : IdlePreset.ToMinutes() * 60;

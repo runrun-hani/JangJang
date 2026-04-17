@@ -4,6 +4,8 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Imaging;
 using JangJang.Core;
+using JangJang.Core.Persona;
+using JangJang.Core.Persona.Suggestion;
 using JangJang.Views.Persona;
 using OpenFileDialog = Microsoft.Win32.OpenFileDialog;
 using ListBox = System.Windows.Controls.ListBox;
@@ -40,7 +42,22 @@ public partial class SettingsWindow : Window
         _wakeUpPath = settings.WakeUpImagePath;
         AutoStartCheck.IsChecked = AutoStartHelper.IsAutoStartEnabled();
         NoRestCheck.IsChecked = settings.NoRestMode;
+        DebugModeCheck.IsChecked = settings.DebugMode;
         PersonaEnabledCheck.IsChecked = settings.PersonaEnabled;
+
+        // API 설정 초기화
+        ApiKeyMasked.Password = settings.SuggestionApiKey ?? string.Empty;
+        ApiKeyVisible.Text = settings.SuggestionApiKey ?? string.Empty;
+        if (!string.IsNullOrEmpty(settings.SuggestionApiModel))
+            ModelCombo.Items.Add(settings.SuggestionApiModel);
+        ModelCombo.Text = settings.SuggestionApiModel ?? "";
+
+        // 페르소나 모드 → 프로그레시브 디스클로저
+        PersonaEnabledCheck.Checked += (_, _) => UpdatePersonaVisibility();
+        PersonaEnabledCheck.Unchecked += (_, _) => UpdatePersonaVisibility();
+        UpdatePersonaVisibility();
+        RefreshPersonaStatus();
+        UpdateApiStatus();
 
         RefreshPreviews();
     }
@@ -49,6 +66,7 @@ public partial class SettingsWindow : Window
     {
         var win = new PersonaWindow { Owner = this };
         win.ShowDialog();
+        RefreshPersonaStatus();
     }
 
     private void RefreshPreviews()
@@ -158,13 +176,23 @@ public partial class SettingsWindow : Window
         var selectWindow = new Window
         {
             Title = "실행 중인 프로그램 선택",
-            Width = 450, Height = 350,
+            Width = 480, Height = 400,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            Owner = this, ResizeMode = ResizeMode.NoResize
+            Owner = this, ResizeMode = ResizeMode.NoResize,
+            Background = (System.Windows.Media.Brush)FindResource("BackgroundBrush")
         };
 
-        var stack = new StackPanel { Margin = new Thickness(8) };
-        var listBox = new ListBox { Height = 260 };
+        var stack = new StackPanel { Margin = new Thickness(16) };
+
+        var header = new TextBlock
+        {
+            Text = "프로그램 선택",
+            FontSize = 16,
+            FontWeight = FontWeights.SemiBold,
+            Margin = new Thickness(0, 0, 0, 12)
+        };
+
+        var listBox = new ListBox { Height = 280 };
 
         foreach (var (name, title) in processes)
         {
@@ -174,9 +202,9 @@ public partial class SettingsWindow : Window
 
         var okBtn = new Button
         {
-            Content = "선택", Width = 80, Margin = new Thickness(0, 8, 0, 0),
-            HorizontalAlignment = System.Windows.HorizontalAlignment.Right,
-            Padding = new Thickness(8, 4, 8, 4)
+            Content = "선택", Margin = new Thickness(0, 12, 0, 0),
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Stretch,
+            Style = (System.Windows.Style)FindResource("PrimaryButton")
         };
         okBtn.Click += (_, _) =>
         {
@@ -187,10 +215,194 @@ public partial class SettingsWindow : Window
             }
         };
 
+        stack.Children.Add(header);
         stack.Children.Add(listBox);
         stack.Children.Add(okBtn);
         selectWindow.Content = stack;
         selectWindow.ShowDialog();
+    }
+
+    private void UpdatePersonaVisibility()
+    {
+        bool personaOn = PersonaEnabledCheck.IsChecked == true;
+
+        // Progressive disclosure: show/hide persona details
+        PersonaDetailPanel.Visibility = personaOn ? Visibility.Visible : Visibility.Collapsed;
+        PersonaOffHint.Visibility = personaOn ? Visibility.Collapsed : Visibility.Visible;
+
+        // Image section: hidden when persona is active
+        ImageSettingsPanel.Visibility = personaOn ? Visibility.Collapsed : Visibility.Visible;
+        ImageHiddenNote.Visibility = personaOn ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void RefreshPersonaStatus()
+    {
+        bool exists = PersonaStore.Exists();
+        if (exists)
+        {
+            var data = PersonaStore.Load();
+            var seedCount = data?.SeedLines?.Count ?? 0;
+            var name = data?.Name ?? "설정됨";
+            PersonaStatusBadge.Background = (System.Windows.Media.Brush)FindResource("SuccessLightBrush");
+            PersonaStatusText.Foreground = (System.Windows.Media.Brush)FindResource("SuccessBrush");
+            PersonaStatusText.Text = $"\u2713 {name} \u00B7 대사 {seedCount}개";
+        }
+        else
+        {
+            PersonaStatusBadge.Background = (System.Windows.Media.Brush)FindResource("MutedBrush");
+            PersonaStatusText.Foreground = (System.Windows.Media.Brush)FindResource("TextMutedBrush");
+            PersonaStatusText.Text = "미설정 — 아래 편집 버튼으로 설정하세요";
+        }
+    }
+
+    private void OnToggleStateImages(object sender, RoutedEventArgs e)
+    {
+        bool expanding = StateImagePanel.Visibility != Visibility.Visible;
+        StateImagePanel.Visibility = expanding ? Visibility.Visible : Visibility.Collapsed;
+        ToggleImagesBtn.Content = expanding ? "\u25BC 상태별 이미지 접기" : "\u25B6 상태별 이미지 펼치기";
+    }
+
+    private void OnToggleApiSettings(object sender, RoutedEventArgs e)
+    {
+        bool expanding = ApiSettingsPanel.Visibility != Visibility.Visible;
+        ApiSettingsPanel.Visibility = expanding ? Visibility.Visible : Visibility.Collapsed;
+        ToggleApiBtn.Content = expanding ? "\u25BC 대사 생성 API 접기" : "\u25B6 대사 생성 API 설정";
+    }
+
+    private static DebugWindow? _debugWindow;
+
+    private void OnDebugModeChanged(object sender, RoutedEventArgs e)
+    {
+        if (DebugModeCheck.IsChecked == true)
+        {
+            if (_debugWindow == null || !_debugWindow.IsLoaded)
+            {
+                _debugWindow = new DebugWindow();
+                _debugWindow.Show();
+            }
+            else
+            {
+                _debugWindow.Activate();
+            }
+        }
+        else
+        {
+            _debugWindow?.Close();
+            _debugWindow = null;
+        }
+    }
+
+    private void UpdateApiStatus()
+    {
+        bool hasKey = !string.IsNullOrWhiteSpace(GetApiKey());
+        if (hasKey)
+        {
+            ApiStatusIndicator.Text = "\u2713 설정됨";
+            ApiStatusIndicator.Foreground = (System.Windows.Media.Brush)FindResource("SuccessBrush");
+        }
+        else
+        {
+            ApiStatusIndicator.Text = "미설정";
+            ApiStatusIndicator.Foreground = (System.Windows.Media.Brush)FindResource("TextMutedBrush");
+            ApiSettingsPanel.Visibility = Visibility.Visible;
+            ToggleApiBtn.Content = "\u25BC 대사 생성 API 접기";
+        }
+    }
+
+    private string GetApiKey()
+    {
+        return ApiKeyVisible.Visibility == Visibility.Visible
+            ? ApiKeyVisible.Text?.Trim() ?? ""
+            : ApiKeyMasked.Password?.Trim() ?? "";
+    }
+
+    private void OnToggleApiKeyClick(object sender, RoutedEventArgs e)
+    {
+        if (ApiKeyVisible.Visibility == Visibility.Collapsed)
+        {
+            ApiKeyVisible.Text = ApiKeyMasked.Password;
+            ApiKeyVisible.Visibility = Visibility.Visible;
+            ApiKeyMasked.Visibility = Visibility.Collapsed;
+            ApiKeyToggleBtn.Content = "숨김";
+        }
+        else
+        {
+            ApiKeyMasked.Password = ApiKeyVisible.Text;
+            ApiKeyMasked.Visibility = Visibility.Visible;
+            ApiKeyVisible.Visibility = Visibility.Collapsed;
+            ApiKeyToggleBtn.Content = "표시";
+        }
+    }
+
+    private async void OnDiscoverModelsClick(object sender, RoutedEventArgs e)
+    {
+        var key = GetApiKey();
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            MessageBox.Show("API 키를 먼저 입력해주세요.", "모델 검색", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        ModelCombo.Items.Clear();
+        ModelCombo.IsEnabled = false;
+
+        var models = await ApiDialogueSuggestionService.DiscoverAvailableModelsAsync(key,
+            progress => Dispatcher.Invoke(() =>
+            {
+                ModelCombo.Items.Clear();
+                ModelCombo.Items.Add(progress);
+                ModelCombo.SelectedIndex = 0;
+            }));
+
+        ModelCombo.Items.Clear();
+        ModelCombo.IsEnabled = true;
+
+        if (models.Count == 0)
+        {
+            ModelCombo.Items.Add("(사용 가능한 모델 없음)");
+            ModelCombo.SelectedIndex = 0;
+            return;
+        }
+
+        int defaultIdx = 0;
+        var current = _settings.SuggestionApiModel;
+        for (int i = 0; i < models.Count; i++)
+        {
+            var (name, recommended) = models[i];
+            var display = recommended ? $"{name} (추천)" : name;
+            ModelCombo.Items.Add(new ComboBoxItem { Content = display, Tag = name });
+            if (name == current) defaultIdx = i;
+        }
+        ModelCombo.SelectedIndex = defaultIdx;
+    }
+
+    private async void OnTestApiKeyClick(object sender, RoutedEventArgs e)
+    {
+        var key = GetApiKey();
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            MessageBox.Show("API 키를 입력해주세요.", "테스트", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var model = ModelCombo.SelectedItem is ComboBoxItem ci ? ci.Tag as string : ModelCombo.SelectedItem as string;
+        var service = new ApiDialogueSuggestionService(key, model: model);
+        var error = await service.TestConnectionAsync();
+
+        if (error == null)
+        {
+            MessageBox.Show("연결 성공!", "테스트", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        else
+        {
+            MessageBox.Show($"연결 실패:\n{error}", "테스트", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private void OnOpenAiStudioSettingsClick(object sender, RoutedEventArgs e)
+    {
+        try { Process.Start(new ProcessStartInfo("https://aistudio.google.com/apikey") { UseShellExecute = true }); }
+        catch { }
     }
 
     private void OnSaveClick(object sender, RoutedEventArgs e)
@@ -218,7 +430,16 @@ public partial class SettingsWindow : Window
 
         _settings.StartWithWindows = AutoStartCheck.IsChecked == true;
         _settings.NoRestMode = NoRestCheck.IsChecked == true;
+        _settings.DebugMode = DebugModeCheck.IsChecked == true;
         _settings.PersonaEnabled = PersonaEnabledCheck.IsChecked == true;
+
+        // API 설정
+        var apiKey = GetApiKey();
+        _settings.SuggestionApiKey = string.IsNullOrWhiteSpace(apiKey) ? null : apiKey;
+        string? selectedModel = ModelCombo.SelectedItem is ComboBoxItem ci ? ci.Tag as string : ModelCombo.SelectedItem as string;
+        if (!string.IsNullOrEmpty(selectedModel) && !selectedModel.StartsWith("("))
+            _settings.SuggestionApiModel = selectedModel;
+
         AutoStartHelper.SetAutoStart(_settings.StartWithWindows);
 
         _settings.Save();

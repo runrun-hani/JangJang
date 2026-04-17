@@ -132,7 +132,7 @@ public partial class PetViewModel : ObservableObject
         if (state != prevState || _dialogueCooldown <= 0)
         {
             StatusText = Dialogue.GetLine(state, annoyance, _monitor.WorkLog.TodaySeconds);
-            _dialogueCooldown = state == PetState.Happy ? 8 : 5;
+            _dialogueCooldown = 25; // ~25초 간격, 상태 전환 시에는 즉시 교체 (위 조건)
         }
 
         switch (state)

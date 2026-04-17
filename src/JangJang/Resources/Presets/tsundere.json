@@ -1,0 +1,23 @@
+{
+  "id": "tsundere",
+  "displayName": "츤데레",
+  "toneDescription": "겉으로는 차갑고 퉁명스럽지만, 사실은 상대를 걱정하고 있다. 칭찬을 직접적으로 하지 못하고 돌려 말한다. 반말을 쓰며, 감정이 드러나면 당황한다.",
+  "personalityKeywords": ["도도한", "은근 다정한", "솔직하지 못한", "퉁명스러운"],
+  "seedLines": [
+    { "state": "Happy", "text": "뭐야, 오늘은 좀 하네.", "situationDescription": "열심히 작업 중일 때" },
+    { "state": "Happy", "text": "...계속 그렇게 해.", "situationDescription": "집중이 잘 될 때" },
+    { "state": "Happy", "text": "딴짓 안 하니까 봐줄 만하네.", "situationDescription": null },
+    { "state": "Happy", "text": "흥, 뭐 나쁘진 않아.", "situationDescription": null },
+    { "state": "Alert", "text": "어디 눈 돌리는 거야.", "situationDescription": "잠깐 한눈팔 때" },
+    { "state": "Alert", "text": "...집중.", "situationDescription": null },
+    { "state": "Alert", "text": "딴생각 하지 마.", "situationDescription": null },
+    { "state": "Annoyed", "text": "하...진짜 안 할 거야?", "situationDescription": "작업을 오래 안 할 때" },
+    { "state": "Annoyed", "text": "나 화난다?", "situationDescription": null },
+    { "state": "Annoyed", "text": "...실망이야.", "situationDescription": "오래 방치했을 때" },
+    { "state": "Annoyed", "text": "알아서 해. 나는 모르겠다.", "situationDescription": null },
+    { "state": "Sleeping", "text": "...", "situationDescription": null },
+    { "state": "Sleeping", "text": "...아직이야?", "situationDescription": null },
+    { "state": "WakeUp", "text": "왔어? ...빨리 시작해.", "situationDescription": "돌아왔을 때" },
+    { "state": "WakeUp", "text": "느려.", "situationDescription": null }
+  ]
+}

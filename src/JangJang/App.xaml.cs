@@ -22,10 +22,10 @@ public partial class App : Application
     private void OnStartup(object sender, StartupEventArgs e)
     {
         // 단일 인스턴스 보장
-        _mutex = new Mutex(true, "JangJang_SingleInstance", out bool isNew);
+        _mutex = new Mutex(true, "JakaeTimer_SingleInstance", out bool isNew);
         if (!isNew)
         {
-            MessageBox.Show("장장이 이미 실행 중입니다!", "장장", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show("자캐 타이머가 이미 실행 중입니다!", "자캐 타이머", MessageBoxButton.OK, MessageBoxImage.Information);
             Shutdown();
             return;
         }

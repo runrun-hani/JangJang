@@ -1,4 +1,17 @@
+using JangJang.Core;
+
 namespace JangJang.Core.Persona;
+
+/// <summary>
+/// 대사의 출처를 추적한다.
+/// </summary>
+public enum SeedLineSource
+{
+    Preset,
+    UserWritten,
+    AiSuggested,
+    AiEdited
+}
 
 /// <summary>
 /// 씨앗 대사 한 줄. 사용자가 직접 작성한 원본 대사.
@@ -17,6 +30,12 @@ public sealed class SeedLine
     /// 비어있으면 대사 본문 벡터로 매칭 (C 모드).
     /// </summary>
     public string? SituationDescription { get; set; }
+
+    /// <summary>이 대사가 속하는 PetState. 하위 호환: 기존 JSON에 없으면 Happy.</summary>
+    public PetState State { get; set; } = PetState.Happy;
+
+    /// <summary>대사의 출처. 하위 호환: 기존 JSON에 없으면 UserWritten.</summary>
+    public SeedLineSource Source { get; set; } = SeedLineSource.UserWritten;
 
     /// <summary>이 씨앗 대사가 추가된 시각. 정렬/히스토리용.</summary>
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

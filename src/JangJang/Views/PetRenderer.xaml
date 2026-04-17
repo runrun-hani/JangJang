@@ -3,19 +3,22 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <StackPanel HorizontalAlignment="Center">
-        <!-- 상태 텍스트 (말풍선) -->
+        <!-- Speech bubble — softer design with subtle shadow -->
         <Border HorizontalAlignment="Center"
-                Background="White" CornerRadius="8"
-                Padding="8,4" Margin="0,0,0,4"
-                BorderBrush="Gray" BorderThickness="1">
+                Background="White" CornerRadius="10"
+                Padding="10,5" Margin="0,0,0,6"
+                BorderBrush="#E2E8F0" BorderThickness="1">
+            <Border.Effect>
+                <DropShadowEffect ShadowDepth="0" BlurRadius="8" Opacity="0.10" Color="Black"/>
+            </Border.Effect>
             <TextBlock Text="{Binding StatusText}"
-                       FontSize="11" FontWeight="Bold"
-                       TextAlignment="Center" Foreground="Black"/>
+                       FontSize="11" FontWeight="SemiBold"
+                       TextAlignment="Center" Foreground="#1E293B"/>
         </Border>
 
-        <!-- 크기 증가 래퍼 -->
-        <Grid x:Name="GrowWrapper" HorizontalAlignment="Center" Margin="0,0,0,4">
-            <!-- 흔들림 + 이미지/오버레이 -->
+        <!-- Scale wrapper for angry growth -->
+        <Grid x:Name="GrowWrapper" HorizontalAlignment="Center" Margin="0,0,0,6">
+            <!-- Shake + image/overlay -->
             <Grid x:Name="PetBody" Width="120" Height="120">
                 <Grid.RenderTransform>
                     <TranslateTransform x:Name="ShakeTransform" X="0"/>
@@ -34,13 +37,16 @@
             </Grid>
         </Grid>
 
-        <!-- 작업 시간 표시 -->
+        <!-- Work timer — refined pill with monospace font -->
         <Border HorizontalAlignment="Center"
-                Background="#CC222222" CornerRadius="3"
-                Padding="6,2">
+                Background="#CC1E293B" CornerRadius="6"
+                Padding="8,3">
+            <Border.Effect>
+                <DropShadowEffect ShadowDepth="0" BlurRadius="4" Opacity="0.15" Color="Black"/>
+            </Border.Effect>
             <TextBlock x:Name="WorkTimeBlock"
                        Text="{Binding WorkTimeText}"
-                       FontSize="30" Foreground="#AAFFFFFF"
+                       FontSize="28" Foreground="#BBFFFFFF"
                        FontFamily="Consolas"
                        TextAlignment="Center"/>
         </Border>

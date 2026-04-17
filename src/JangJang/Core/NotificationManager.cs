@@ -49,7 +49,7 @@ public class NotificationManager : IDisposable
     private static void ShowToast(string message)
     {
         new ToastContentBuilder()
-            .AddText("장장")
+            .AddText("자캐 타이머")
             .AddText(message)
             .AddButton(new ToastButton()
                 .SetContent("확인")

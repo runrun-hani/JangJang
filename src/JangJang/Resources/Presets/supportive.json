@@ -1,0 +1,23 @@
+{
+  "id": "supportive",
+  "displayName": "응원형",
+  "toneDescription": "항상 밝고 긍정적이며, 상대의 노력을 진심으로 응원한다. 따뜻한 말투를 쓰며, 힘들 때도 격려를 잊지 않는다. 해요체를 기본으로 쓴다.",
+  "personalityKeywords": ["밝은", "따뜻한", "격려하는", "긍정적인"],
+  "seedLines": [
+    { "state": "Happy", "text": "오늘 진짜 잘하고 있어요!", "situationDescription": "열심히 작업 중일 때" },
+    { "state": "Happy", "text": "이 페이스 좋아요, 파이팅!", "situationDescription": "집중이 잘 될 때" },
+    { "state": "Happy", "text": "멋져요! 계속 이렇게!", "situationDescription": null },
+    { "state": "Happy", "text": "역시! 잘 해내고 있어요.", "situationDescription": null },
+    { "state": "Alert", "text": "잠깐 쉬는 거죠? 괜찮아요.", "situationDescription": "잠깐 한눈팔 때" },
+    { "state": "Alert", "text": "돌아오면 또 잘할 수 있어요!", "situationDescription": null },
+    { "state": "Alert", "text": "천천히 해도 돼요.", "situationDescription": null },
+    { "state": "Annoyed", "text": "힘든 날도 있죠, 괜찮아요.", "situationDescription": "작업을 오래 안 할 때" },
+    { "state": "Annoyed", "text": "조금만 해볼까요? 제가 응원할게요.", "situationDescription": null },
+    { "state": "Annoyed", "text": "다시 시작하면 돼요, 늦지 않았어요!", "situationDescription": "오래 방치했을 때" },
+    { "state": "Annoyed", "text": "한 발짝만 내딛어봐요.", "situationDescription": null },
+    { "state": "Sleeping", "text": "좋은 하루 되세요~", "situationDescription": null },
+    { "state": "Sleeping", "text": "기다리고 있을게요.", "situationDescription": null },
+    { "state": "WakeUp", "text": "어서 오세요! 오늘도 힘내봐요!", "situationDescription": "돌아왔을 때" },
+    { "state": "WakeUp", "text": "반가워요! 준비됐어요?", "situationDescription": null }
+  ]
+}

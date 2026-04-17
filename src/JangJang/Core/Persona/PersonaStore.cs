@@ -1,5 +1,6 @@
 using System.IO;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace JangJang.Core.Persona;
 
@@ -27,6 +28,14 @@ public static class PersonaStore
 
     public static string EmbeddingsCachePath { get; } = Path.Combine(CurrentDir, "embeddings.bin");
 
+    public static string FeedbackJsonPath { get; } = Path.Combine(CurrentDir, "feedback.json");
+
+    private static readonly JsonSerializerOptions _jsonOptions = new()
+    {
+        WriteIndented = true,
+        Converters = { new JsonStringEnumConverter() }
+    };
+
     /// <summary>현재 페르소나 폴더에 persona.json이 존재하는지.</summary>
     public static bool Exists() => File.Exists(PersonaJsonPath);
 
@@ -53,7 +62,10 @@ public static class PersonaStore
             if (!File.Exists(PersonaJsonPath))
                 return null;
             var json = File.ReadAllText(PersonaJsonPath);
-            return JsonSerializer.Deserialize<PersonaData>(json);
+            var data = JsonSerializer.Deserialize<PersonaData>(json, _jsonOptions);
+            if (data != null)
+                MigrateIfNeeded(data);
+            return data;
         }
         catch
         {
@@ -69,10 +81,20 @@ public static class PersonaStore
         try
         {
             Directory.CreateDirectory(CurrentDir);
-            var json = JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true });
+            var json = JsonSerializer.Serialize(data, _jsonOptions);
             File.WriteAllText(PersonaJsonPath, json);
         }
         catch { }
+    }
+
+    /// <summary>
+    /// 기존 persona.json에서 새 필드가 없는 경우 마이그레이션한다.
+    /// ToneHint → CustomToneDescription 복사 (새 필드가 비어있을 때만).
+    /// </summary>
+    private static void MigrateIfNeeded(PersonaData data)
+    {
+        if (string.IsNullOrEmpty(data.CustomToneDescription) && !string.IsNullOrEmpty(data.ToneHint))
+            data.CustomToneDescription = data.ToneHint;
     }
 
     /// <summary>

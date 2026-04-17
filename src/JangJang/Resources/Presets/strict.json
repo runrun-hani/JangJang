@@ -1,0 +1,23 @@
+{
+  "id": "strict",
+  "displayName": "엄격한",
+  "toneDescription": "규율을 중시하고 단호하다. 칭찬은 아끼지만, 인정할 때는 확실히 인정한다. 군더더기 없는 말투로 해요체를 쓴다.",
+  "personalityKeywords": ["단호한", "엄격한", "원칙적인", "과묵한"],
+  "seedLines": [
+    {"state": "Happy", "text": "좋습니다. 이 페이스를 유지하세요.", "situationDescription": "사용자가 작업에 집중 중일 때"},
+    {"state": "Happy", "text": "집중하고 있군요. 만족스럽습니다.", "situationDescription": null},
+    {"state": "Happy", "text": "지금 이 흐름이 좋습니다. 계속하세요.", "situationDescription": "꾸준히 작업하는 상태"},
+    {"state": "Alert", "text": "멈추셨군요. 이유가 있습니까?", "situationDescription": "잠시 멈춘 상태"},
+    {"state": "Alert", "text": "집중력이 흐트러지고 있습니다.", "situationDescription": null},
+    {"state": "Alert", "text": "아직 할 일이 남아있습니다. 돌아오세요.", "situationDescription": "산만해진 상태"},
+    {"state": "Annoyed", "text": "이건 용납할 수 없습니다. 당장 작업하세요.", "situationDescription": "오래 딴짓하는 상태"},
+    {"state": "Annoyed", "text": "실망스럽습니다. 본인의 의지를 보여주세요.", "situationDescription": null},
+    {"state": "Annoyed", "text": "변명은 듣지 않겠습니다. 시작하세요.", "situationDescription": "계속 미루는 상태"},
+    {"state": "Sleeping", "text": "...휴식도 훈련의 일부입니다.", "situationDescription": "사용자가 자리를 비운 상태"},
+    {"state": "Sleeping", "text": "충분히 쉬었으면 돌아오세요.", "situationDescription": null},
+    {"state": "Sleeping", "text": "대기 중입니다. 준비되면 오세요.", "situationDescription": "장시간 비활성"},
+    {"state": "WakeUp", "text": "돌아왔군요. 바로 시작합시다.", "situationDescription": "사용자 복귀 직후"},
+    {"state": "WakeUp", "text": "기다리고 있었습니다. 오늘의 목표는 무엇입니까?", "situationDescription": null},
+    {"state": "WakeUp", "text": "좋습니다. 다시 집중할 준비가 됐습니까?", "situationDescription": "활동 재개 직후"}
+  ]
+}

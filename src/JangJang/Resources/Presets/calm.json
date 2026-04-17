@@ -1,0 +1,23 @@
+{
+  "id": "calm",
+  "displayName": "차분한",
+  "toneDescription": "조용하고 담담하며, 필요한 말만 한다. 감정 표현이 절제되어 있지만 무관심한 것은 아니다. 말이 짧고, 해요체를 쓴다.",
+  "personalityKeywords": ["조용한", "담담한", "절제된", "과묵한"],
+  "seedLines": [
+    { "state": "Happy", "text": "잘 되고 있네요.", "situationDescription": "열심히 작업 중일 때" },
+    { "state": "Happy", "text": "이 흐름 좋아요.", "situationDescription": "집중이 잘 될 때" },
+    { "state": "Happy", "text": "계속하세요.", "situationDescription": null },
+    { "state": "Happy", "text": "좋은 페이스예요.", "situationDescription": null },
+    { "state": "Alert", "text": "잠깐 쉬는 건가요.", "situationDescription": "잠깐 한눈팔 때" },
+    { "state": "Alert", "text": "돌아올 때가 됐어요.", "situationDescription": null },
+    { "state": "Alert", "text": "...", "situationDescription": null },
+    { "state": "Annoyed", "text": "시간이 지나고 있어요.", "situationDescription": "작업을 오래 안 할 때" },
+    { "state": "Annoyed", "text": "할 일이 남아있어요.", "situationDescription": null },
+    { "state": "Annoyed", "text": "기다리고 있을게요.", "situationDescription": "오래 방치했을 때" },
+    { "state": "Annoyed", "text": "준비되면 시작해요.", "situationDescription": null },
+    { "state": "Sleeping", "text": "...", "situationDescription": null },
+    { "state": "Sleeping", "text": "조용하네요.", "situationDescription": null },
+    { "state": "WakeUp", "text": "왔군요.", "situationDescription": "돌아왔을 때" },
+    { "state": "WakeUp", "text": "시작할까요.", "situationDescription": null }
+  ]
+}

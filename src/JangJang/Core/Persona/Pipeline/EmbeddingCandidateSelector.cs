@@ -155,8 +155,16 @@ public sealed class EmbeddingCandidateSelector : ICandidateSelector
         // 쿼리의 keyword tokens (hybrid 매칭용)
         var queryTokens = TokenizeForKeyword(narration);
 
-        var scored = new List<(SeedLine Line, float Score)>(_persona.SeedLines.Count);
-        foreach (var line in _persona.SeedLines)
+        // State 필드가 설정된 대사가 있으면, 현재 상태에 맞는 대사만 후보로 사용.
+        // 해당 상태에 대사가 없으면 전체 풀에서 매칭 (폴백).
+        var candidates = _persona.SeedLines
+            .Where(l => l.State == context.State)
+            .ToList();
+        if (candidates.Count == 0)
+            candidates = _persona.SeedLines;
+
+        var scored = new List<(SeedLine Line, float Score)>(candidates.Count);
+        foreach (var line in candidates)
         {
             var text = GetMatchingText(line);
             if (text == null) continue;
