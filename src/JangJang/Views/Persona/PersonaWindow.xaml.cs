@@ -34,10 +34,25 @@ public partial class PersonaWindow : Window
 
     private readonly AppSettings _settings;
 
-    public PersonaWindow()
+    // 편집 대상. null이면 신규 생성 → 저장 시 새 GUID 부여.
+    private PersonaData? _editTarget;
+
+    /// <summary>
+    /// 저장된 페르소나 Id. 저장 전에는 null, 저장 후에는 편집 대상의 Id.
+    /// 호출자(Settings 등)가 저장 결과를 활용할 때 참조.
+    /// </summary>
+    public string? SavedPersonaId { get; private set; }
+
+    public PersonaWindow() : this(null) { }
+
+    /// <summary>
+    /// existing == null이면 신규 페르소나. non-null이면 해당 데이터를 편집.
+    /// </summary>
+    public PersonaWindow(PersonaData? existing)
     {
         InitializeComponent();
 
+        _editTarget = existing;
         _settings = AppSettings.Load();
         _presets = PresetStore.LoadAll();
 
@@ -277,9 +292,10 @@ public partial class PersonaWindow : Window
         {
             if (!string.IsNullOrEmpty(_newPortraitSourcePath) && File.Exists(_newPortraitSourcePath))
                 pathToShow = _newPortraitSourcePath;
-            else if (!string.IsNullOrEmpty(_currentPortraitFileName))
+            else if (!string.IsNullOrEmpty(_currentPortraitFileName) && _editTarget != null
+                     && !string.IsNullOrEmpty(_editTarget.Id))
             {
-                var existing = Path.Combine(PersonaStore.CurrentDir, _currentPortraitFileName);
+                var existing = Path.Combine(PersonaStore.GetPersonaDir(_editTarget.Id), _currentPortraitFileName);
                 if (File.Exists(existing)) pathToShow = existing;
             }
         }
@@ -456,7 +472,7 @@ public partial class PersonaWindow : Window
             CustomNotes = PersonalityNotesBox.Text?.Trim(),
             TargetState = _currentState,
             ExistingLines = BuildExistingLinesMap(),
-            RecentFeedback = FeedbackStore.Load()
+            RecentFeedback = FeedbackStore.Load(_editTarget?.Id)
         };
 
         AiSuggestButton.IsEnabled = false;
@@ -542,7 +558,7 @@ public partial class PersonaWindow : Window
         };
         rejectBtn.Click += (_, _) =>
         {
-            FeedbackStore.Append(new DialogueFeedback
+            FeedbackStore.Append(_editTarget?.Id, new DialogueFeedback
             {
                 OriginalText = text,
                 Type = FeedbackType.Rejected,
@@ -572,7 +588,7 @@ public partial class PersonaWindow : Window
         _allSeeds.Add(newLine);
         _filteredSeeds.Add(newLine);
 
-        FeedbackStore.Append(new DialogueFeedback
+        FeedbackStore.Append(_editTarget?.Id, new DialogueFeedback
         {
             OriginalText = originalText,
             EditedText = type == FeedbackType.Edited ? finalText : null,
@@ -624,7 +640,7 @@ public partial class PersonaWindow : Window
 
     private void LoadExistingPersona()
     {
-        var data = PersonaStore.Load();
+        var data = _editTarget;
         if (data == null) return;
 
         NameBox.Text = data.Name ?? string.Empty;
@@ -690,9 +706,10 @@ public partial class PersonaWindow : Window
     {
         if (_portraitCleared) return false;
         if (!string.IsNullOrEmpty(_newPortraitSourcePath) && File.Exists(_newPortraitSourcePath)) return true;
-        if (!string.IsNullOrEmpty(_currentPortraitFileName))
+        if (!string.IsNullOrEmpty(_currentPortraitFileName) && _editTarget != null
+            && !string.IsNullOrEmpty(_editTarget.Id))
         {
-            var p = Path.Combine(PersonaStore.CurrentDir, _currentPortraitFileName);
+            var p = Path.Combine(PersonaStore.GetPersonaDir(_editTarget.Id), _currentPortraitFileName);
             if (File.Exists(p)) return true;
         }
         return false;
@@ -702,11 +719,16 @@ public partial class PersonaWindow : Window
 
     private void OnSaveClick(object sender, RoutedEventArgs e)
     {
+        // 신규 편집이면 Id 발급 (초상화 복사에 필요).
+        var personaId = _editTarget?.Id;
+        if (string.IsNullOrEmpty(personaId))
+            personaId = Guid.NewGuid().ToString("N");
+
         string portraitFileName;
         try
         {
             if (!string.IsNullOrEmpty(_newPortraitSourcePath))
-                portraitFileName = PersonaStore.CopyPortrait(_newPortraitSourcePath);
+                portraitFileName = PersonaStore.CopyPortrait(personaId, _newPortraitSourcePath);
             else if (!_portraitCleared && !string.IsNullOrEmpty(_currentPortraitFileName))
                 portraitFileName = _currentPortraitFileName!;
             else
@@ -724,6 +746,7 @@ public partial class PersonaWindow : Window
 
         var data = new PersonaData
         {
+            Id = personaId,
             Name = NameBox.Text.Trim(),
             PortraitFileName = portraitFileName,
             PresetId = _selectedPresetId,
@@ -733,6 +756,7 @@ public partial class PersonaWindow : Window
         };
 
         PersonaStore.Save(data);
+        SavedPersonaId = personaId;
         DialogResult = true;
     }
 

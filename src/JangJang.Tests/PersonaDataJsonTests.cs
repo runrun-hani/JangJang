@@ -164,6 +164,38 @@ public class PersonaDataJsonTests
     }
 
     [Fact]
+    public void Id_RoundTrip_Preserved()
+    {
+        var original = new PersonaData
+        {
+            Id = "abc123",
+            Name = "ID 보존 테스트",
+            SeedLines = new List<SeedLine> { new() { Text = "안녕" } }
+        };
+
+        var json = JsonSerializer.Serialize(original, _options);
+        var loaded = JsonSerializer.Deserialize<PersonaData>(json, _options)!;
+
+        Assert.Equal("abc123", loaded.Id);
+    }
+
+    [Fact]
+    public void Id_MissingInLegacyJson_DefaultsToEmpty()
+    {
+        // Id 필드가 없는 레거시 JSON → Id 기본값(빈 문자열)으로 로드.
+        // (PersonaStore.Load(id)가 빈 Id에 파라미터 id를 주입하는 로직은 별도)
+        var legacyJson = """
+        {
+          "Name": "구형",
+          "SeedLines": []
+        }
+        """;
+
+        var loaded = JsonSerializer.Deserialize<PersonaData>(legacyJson, _options)!;
+        Assert.Equal(string.Empty, loaded.Id);
+    }
+
+    [Fact]
     public void NewFieldsPresetId_RoundTrip()
     {
         var original = new PersonaData

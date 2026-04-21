@@ -31,6 +31,10 @@ public partial class App : Application
         }
 
         var settings = AppSettings.Load();
+
+        // 레거시 current/ 폴더가 있으면 GUID 폴더로 이전하고 목록·활성에 등록.
+        MigrateLegacyPersonaIfNeeded(settings);
+
         _monitor = new ActivityMonitor(settings);
 
         // 자캐 페르소나 모드 활성화 시 PersonaDialogueProvider 시도. 실패 시 기본 Provider 유지.
@@ -49,8 +53,9 @@ public partial class App : Application
     private void TryInitializePersonaProvider(AppSettings settings, ActivityMonitor monitor)
     {
         if (!settings.PersonaEnabled) return;
+        if (string.IsNullOrEmpty(settings.ActivePersonaId)) return;
 
-        var persona = PersonaStore.Load();
+        var persona = PersonaStore.Load(settings.ActivePersonaId);
         if (persona == null || persona.SeedLines.Count == 0) return;
 
         var modelFolder = ResolveModelFolder();
@@ -69,6 +74,27 @@ public partial class App : Application
             _personaProvider = null;
             Dialogue.ResetToDefault();
         }
+    }
+
+    /// <summary>
+    /// 레거시 current/ 폴더 → GUID 폴더로 1회성 이전. 성공 시 RegisteredPersonaIds에 추가하고
+    /// ActivePersonaId가 비어 있으면 마이그레이션된 Id로 설정한다. 조용히 실패.
+    /// </summary>
+    private static void MigrateLegacyPersonaIfNeeded(AppSettings settings)
+    {
+        try
+        {
+            if (!Directory.Exists(PersonaStore.LegacyCurrentDir)) return;
+            var migratedId = PersonaStore.MigrateLegacyCurrent();
+            if (string.IsNullOrEmpty(migratedId)) return;
+
+            if (!settings.RegisteredPersonaIds.Contains(migratedId))
+                settings.RegisteredPersonaIds.Add(migratedId);
+            if (string.IsNullOrEmpty(settings.ActivePersonaId))
+                settings.ActivePersonaId = migratedId;
+            settings.Save();
+        }
+        catch { }
     }
 
     /// <summary>

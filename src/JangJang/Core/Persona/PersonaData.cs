@@ -1,12 +1,18 @@
 namespace JangJang.Core.Persona;
 
 /// <summary>
-/// 현재 활성 페르소나의 전체 데이터. persona.json으로 직렬화된다.
-/// 저장 위치: %AppData%/JangJang/Personas/current/persona.json
-/// 단일 페르소나 구조지만 "current" 폴더 구조를 유지하여 나중 다중 전환 시 확장 여지를 남김.
+/// 페르소나의 전체 데이터. persona.json으로 직렬화된다.
+/// 저장 위치: %AppData%/JangJang/Personas/{Id}/persona.json
+/// 여러 페르소나를 병렬로 보관하며 AppSettings.ActivePersonaId가 현재 활성 대상을 가리킨다.
 /// </summary>
 public sealed class PersonaData
 {
+    /// <summary>
+    /// 페르소나 고유 식별자. 폴더명으로 사용된다. 로드 시 비어 있으면 Store가 새 GUID를 부여한다.
+    /// 사용자에게 노출되지 않으며, 이름 변경과 독립적이다.
+    /// </summary>
+    public string Id { get; set; } = string.Empty;
+
     /// <summary>페르소나 이름 (사용자 표시용)</summary>
     public string Name { get; set; } = string.Empty;
 

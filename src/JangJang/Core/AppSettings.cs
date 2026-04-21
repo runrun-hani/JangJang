@@ -27,6 +27,17 @@ public class AppSettings
     public string? WakeUpImagePath { get; set; }
     public bool GrowWhenAnnoyed { get; set; } = true;
     public double MaxGrowScale { get; set; } = 2.0;
+
+    /// <summary>
+    /// 대사가 자동으로 교체되는 주기(초). 상태가 바뀌는 순간에는 이 값과 무관하게 즉시 새 대사가 나온다.
+    /// 유효 범위: 5 ~ 120초. 잘못된 값은 DialogueIntervalSecondsClamped에서 보정한다.
+    /// </summary>
+    public int DialogueIntervalSeconds { get; set; } = 25;
+
+    /// <summary>범위 밖 값을 안전한 범위로 보정한 실제 사용 값.</summary>
+    [JsonIgnore]
+    public int DialogueIntervalSecondsClamped =>
+        Math.Clamp(DialogueIntervalSeconds, 5, 120);
     public string TargetProcessName { get; set; } = "CLIPStudioPaint";
     public string TargetDisplayName { get; set; } = "Clip Studio Paint";
 
@@ -35,6 +46,18 @@ public class AppSettings
     /// PersonaDialogueProvider가 동작한다. 둘 중 하나라도 부재하면 자동으로 기본(치와와) Provider로 폴백.
     /// </summary>
     public bool PersonaEnabled { get; set; }
+
+    /// <summary>
+    /// 설정에 등록된 페르소나 Id 화이트리스트. 폴더가 실제로 존재해도 여기에 없으면 앱에서 보이지 않는다.
+    /// "삭제" 행위는 이 목록에서 제거할 뿐 실제 파일은 건드리지 않는다.
+    /// </summary>
+    public List<string> RegisteredPersonaIds { get; set; } = new();
+
+    /// <summary>
+    /// 현재 활성 페르소나 Id. null이면 활성 페르소나 없음 → 페르소나 Provider 비활성.
+    /// RegisteredPersonaIds에 포함된 값이어야 유효하다.
+    /// </summary>
+    public string? ActivePersonaId { get; set; }
 
     /// <summary>AI 추천 API 프로바이더 (예: "gemini", "groq", "custom")</summary>
     public string SuggestionApiProvider { get; set; } = "gemini";

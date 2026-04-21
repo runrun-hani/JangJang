@@ -68,7 +68,7 @@ public sealed class PersonaDialogueProvider : IDialogueProvider, IDisposable
 
     /// <summary>
     /// 표준 조립 헬퍼. 모델 폴더 + 페르소나 + ActivityMonitor만 주면 완성된 Provider 반환.
-    /// 캐시 경로는 PersonaStore.EmbeddingsCachePath를 사용.
+    /// 캐시 경로는 persona.Id 기반으로 결정된다. persona.Id가 비어 있으면 예외.
     /// 어느 단계든 실패하면 예외 전파 → 호출자가 폴백.
     /// </summary>
     public static PersonaDialogueProvider Create(
@@ -76,11 +76,15 @@ public sealed class PersonaDialogueProvider : IDialogueProvider, IDisposable
         PersonaData persona,
         ActivityMonitor monitor)
     {
+        if (string.IsNullOrEmpty(persona.Id))
+            throw new InvalidOperationException("PersonaData.Id is required for Provider creation.");
+
         var embedder = new OnnxEmbeddingService(modelFolderPath);
         try
         {
             var collector = new DefaultContextCollector(monitor);
-            var selector = new EmbeddingCandidateSelector(embedder, persona, PersonaStore.EmbeddingsCachePath);
+            var cachePath = PersonaStore.GetEmbeddingsCachePath(persona.Id);
+            var selector = new EmbeddingCandidateSelector(embedder, persona, cachePath);
             var processor = new PassthroughOutputProcessor();
             return new PersonaDialogueProvider(embedder, collector, selector, processor);
         }

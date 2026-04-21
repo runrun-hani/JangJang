@@ -19,7 +19,31 @@
                         <CheckBox x:Name="AutoStartCheck" Content="Windows 시작 시 자동 실행" Margin="0,0,0,8"/>
                         <CheckBox x:Name="NoRestCheck" Content="휴식은 허락하지 않는다" Margin="0,0,0,8"/>
                         <CheckBox x:Name="DebugModeCheck" Content="디버그 모드 (파이프라인 모니터)"
-                                  Checked="OnDebugModeChanged" Unchecked="OnDebugModeChanged"/>
+                                  Checked="OnDebugModeChanged" Unchecked="OnDebugModeChanged"
+                                  Margin="0,0,0,10"/>
+
+                        <!-- 대사 교체 주기 -->
+                        <Grid Margin="0,2,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="대사 주기"
+                                       VerticalAlignment="Center" Margin="0,0,8,0"
+                                       Style="{StaticResource LabelText}"/>
+                            <Slider Grid.Column="1" x:Name="DialogueIntervalSlider"
+                                    Minimum="5" Maximum="120" TickFrequency="5"
+                                    IsSnapToTickEnabled="True"
+                                    VerticalAlignment="Center"
+                                    ValueChanged="OnDialogueIntervalChanged"/>
+                            <TextBlock Grid.Column="2" x:Name="DialogueIntervalLabel"
+                                       VerticalAlignment="Center" Margin="8,0,0,0"
+                                       MinWidth="40" TextAlignment="Right"/>
+                        </Grid>
+                        <TextBlock Style="{StaticResource CaptionText}"
+                                   Text="상태가 바뀌는 순간에는 즉시 새 대사가 나옵니다."
+                                   Margin="0,2,0,0"/>
                     </StackPanel>
                 </Border>
 
@@ -46,16 +70,67 @@
                         <!-- Detail panel: ONLY visible when persona is ON -->
                         <StackPanel x:Name="PersonaDetailPanel" Visibility="Collapsed" Margin="0,8,0,0">
 
-                            <!-- Persona status indicator -->
-                            <Border x:Name="PersonaStatusBadge" CornerRadius="6" Padding="10,6"
-                                    Margin="0,0,0,8">
-                                <TextBlock x:Name="PersonaStatusText" FontSize="11"/>
+                            <!-- 등록된 페르소나 목록 (비어 있으면 안내) -->
+                            <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                                    CornerRadius="4" Padding="4" Margin="0,0,0,8"
+                                    Background="White">
+                                <StackPanel>
+                                    <ItemsControl x:Name="PersonaItemsControl">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Padding="8,6" Margin="0,0,0,2"
+                                                        Background="{Binding RowBackground}" CornerRadius="3">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <StackPanel Grid.Column="0" Orientation="Vertical">
+                                                            <StackPanel Orientation="Horizontal">
+                                                                <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" FontSize="12"/>
+                                                                <Border Background="{StaticResource SuccessLightBrush}"
+                                                                        CornerRadius="3" Padding="5,1"
+                                                                        Margin="6,0,0,0"
+                                                                        Visibility="{Binding ActiveBadgeVisibility}">
+                                                                    <TextBlock Text="활성" FontSize="9" FontWeight="SemiBold"
+                                                                               Foreground="{StaticResource SuccessBrush}"/>
+                                                                </Border>
+                                                            </StackPanel>
+                                                            <TextBlock Text="{Binding SubText}" FontSize="10"
+                                                                       Foreground="{StaticResource TextMutedBrush}"/>
+                                                        </StackPanel>
+                                                        <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                                            <Button Content="활성화" Tag="{Binding Id}"
+                                                                    Click="OnActivatePersonaClick"
+                                                                    IsEnabled="{Binding CanActivate}"
+                                                                    FontSize="10" Padding="6,3" Margin="2,0"/>
+                                                            <Button Content="편집" Tag="{Binding Id}"
+                                                                    Click="OnEditPersonaItemClick"
+                                                                    FontSize="10" Padding="6,3" Margin="2,0"/>
+                                                            <Button Content="제거" Tag="{Binding Id}"
+                                                                    Click="OnRemovePersonaClick"
+                                                                    FontSize="10" Padding="6,3" Margin="2,0"/>
+                                                        </StackPanel>
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <TextBlock x:Name="PersonaEmptyHint"
+                                               Text="등록된 페르소나가 없습니다. 아래 버튼으로 추가하세요."
+                                               FontSize="11" Foreground="{StaticResource TextMutedBrush}"
+                                               Margin="4,6,0,6" Visibility="Collapsed"/>
+                                </StackPanel>
                             </Border>
 
-                            <Button Content="자캐 페르소나 편집..." Click="OnEditPersonaClick"
-                                    HorizontalAlignment="Left" Margin="0,0,0,4"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <Button Content="+ 새 페르소나" Click="OnNewPersonaClick"
+                                        Padding="10,4" Margin="0,0,6,0"/>
+                                <Button Content="파일에서 불러오기" Click="OnImportPersonaClick"
+                                        Padding="10,4"/>
+                            </StackPanel>
                             <TextBlock Style="{StaticResource CaptionText}"
-                                       Text="변경은 재시작 후 적용됩니다."/>
+                                       Text="활성 페르소나 전환은 재시작 후 반영됩니다. 제거는 목록에서만 내릴 뿐 파일은 유지됩니다."/>
 
                             <Separator Margin="0,12,0,12"/>
 

@@ -1,7 +1,9 @@
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using JangJang.Core;
 using JangJang.Core.Persona;
@@ -19,10 +21,20 @@ public partial class SettingsWindow : Window
     private readonly AppSettings _settings;
     private string? _defaultPath, _happyPath, _idlePath, _annoyedPath, _sleepingPath, _wakeUpPath;
 
+    /// <summary>PersonaItemsControl에 바인딩되는 행 목록.</summary>
+    private readonly ObservableCollection<PersonaListItem> _personaItems = new();
+
+    /// <summary>창을 열 때의 페르소나 목록 스냅샷. Save 대신 Cancel/X 닫기 시 롤백에 사용.</summary>
+    private readonly List<string> _originalRegisteredIds;
+    private readonly string? _originalActiveId;
+
     public SettingsWindow(AppSettings settings)
     {
         _settings = settings;
+        _originalRegisteredIds = new List<string>(settings.RegisteredPersonaIds);
+        _originalActiveId = settings.ActivePersonaId;
         InitializeComponent();
+        Closing += OnWindowClosing;
 
         foreach (IdlePreset preset in Enum.GetValues<IdlePreset>())
             PresetCombo.Items.Add(new ComboBoxItem { Content = preset.ToDisplayName(), Tag = preset });
@@ -45,6 +57,10 @@ public partial class SettingsWindow : Window
         DebugModeCheck.IsChecked = settings.DebugMode;
         PersonaEnabledCheck.IsChecked = settings.PersonaEnabled;
 
+        // 대사 교체 주기: 슬라이더 로드. Clamp된 값을 초기값으로 사용해 극단 저장 값 자동 보정.
+        DialogueIntervalSlider.Value = settings.DialogueIntervalSecondsClamped;
+        UpdateDialogueIntervalLabel();
+
         // API 설정 초기화
         ApiKeyMasked.Password = settings.SuggestionApiKeyDecrypted ?? string.Empty;
         ApiKeyVisible.Text = settings.SuggestionApiKeyDecrypted ?? string.Empty;
@@ -56,17 +72,161 @@ public partial class SettingsWindow : Window
         PersonaEnabledCheck.Checked += (_, _) => UpdatePersonaVisibility();
         PersonaEnabledCheck.Unchecked += (_, _) => UpdatePersonaVisibility();
         UpdatePersonaVisibility();
-        RefreshPersonaStatus();
+
+        PersonaItemsControl.ItemsSource = _personaItems;
+        RefreshPersonaList();
         UpdateApiStatus();
 
         RefreshPreviews();
     }
 
-    private void OnEditPersonaClick(object sender, RoutedEventArgs e)
+    // --- 페르소나 목록 관리 ---
+
+    /// <summary>
+    /// 등록된 페르소나 Id 목록을 읽어 실제 데이터와 결합해 리스트를 갱신.
+    /// 데이터가 손상/부재한 항목은 이름 없이 "(불러오기 실패)"로 표시한다 (등록만 되고 파일이 없는 경우 등).
+    /// </summary>
+    private void RefreshPersonaList()
     {
-        var win = new PersonaWindow { Owner = this };
-        win.ShowDialog();
-        RefreshPersonaStatus();
+        _personaItems.Clear();
+
+        var activeId = _settings.ActivePersonaId;
+        foreach (var id in _settings.RegisteredPersonaIds)
+        {
+            var data = PersonaStore.Load(id);
+            var isActive = string.Equals(id, activeId, StringComparison.Ordinal);
+            _personaItems.Add(new PersonaListItem
+            {
+                Id = id,
+                DisplayName = string.IsNullOrWhiteSpace(data?.Name) ? "(이름 없음)" : data.Name,
+                SubText = data == null
+                    ? "(파일을 찾을 수 없음 · 제거 가능)"
+                    : $"대사 {data.SeedLines.Count}개",
+                IsActive = isActive
+            });
+        }
+
+        PersonaEmptyHint.Visibility = _personaItems.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void OnNewPersonaClick(object sender, RoutedEventArgs e)
+    {
+        // PersonaWindow 내부에서 이미 persona.json이 디스크에 저장된다.
+        // SettingsWindow의 목록(RegisteredPersonaIds)만 메모리에서 갱신 — 최종 persist는 OnSaveClick.
+        var win = new PersonaWindow(null) { Owner = this };
+        var ok = win.ShowDialog();
+        if (ok == true && !string.IsNullOrEmpty(win.SavedPersonaId))
+        {
+            if (!_settings.RegisteredPersonaIds.Contains(win.SavedPersonaId))
+                _settings.RegisteredPersonaIds.Add(win.SavedPersonaId);
+            // 첫 페르소나면 자동 활성화
+            if (string.IsNullOrEmpty(_settings.ActivePersonaId))
+                _settings.ActivePersonaId = win.SavedPersonaId;
+            RefreshPersonaList();
+        }
+    }
+
+    private void OnImportPersonaClick(object sender, RoutedEventArgs e)
+    {
+        var dlg = new OpenFileDialog
+        {
+            Title = "불러올 persona.json 선택",
+            Filter = "persona.json|persona.json|모든 파일|*.*"
+        };
+        if (dlg.ShowDialog() != true) return;
+
+        var folder = Path.GetDirectoryName(dlg.FileName);
+        if (string.IsNullOrEmpty(folder))
+        {
+            MessageBox.Show("폴더를 확인할 수 없습니다.", "페르소나 불러오기",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        // 디스크에는 새 폴더가 복사되지만, 설정(RegisteredPersonaIds) 반영은 Save 시점에 확정.
+        var newId = PersonaStore.ImportFromFolder(folder);
+        if (string.IsNullOrEmpty(newId))
+        {
+            MessageBox.Show("persona.json을 읽지 못했습니다.", "페르소나 불러오기",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        if (!_settings.RegisteredPersonaIds.Contains(newId))
+            _settings.RegisteredPersonaIds.Add(newId);
+        if (string.IsNullOrEmpty(_settings.ActivePersonaId))
+            _settings.ActivePersonaId = newId;
+        RefreshPersonaList();
+    }
+
+    private void OnActivatePersonaClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button btn || btn.Tag is not string id) return;
+        _settings.ActivePersonaId = id;
+        RefreshPersonaList();
+    }
+
+    private void OnEditPersonaItemClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button btn || btn.Tag is not string id) return;
+        var data = PersonaStore.Load(id);
+        if (data == null)
+        {
+            MessageBox.Show("페르소나 데이터를 읽을 수 없습니다. 제거 후 다시 추가하세요.",
+                "페르소나 편집", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        var win = new PersonaWindow(data) { Owner = this };
+        if (win.ShowDialog() == true)
+            RefreshPersonaList();
+    }
+
+    private void OnRemovePersonaClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button btn || btn.Tag is not string id) return;
+        var item = _personaItems.FirstOrDefault(p => p.Id == id);
+        var name = item?.DisplayName ?? id;
+
+        var result = MessageBox.Show(
+            $"\"{name}\" 을(를) 목록에서 제거합니다.\n(실제 파일은 유지됩니다.)",
+            "페르소나 제거",
+            MessageBoxButton.OKCancel,
+            MessageBoxImage.Question);
+        if (result != MessageBoxResult.OK) return;
+
+        _settings.RegisteredPersonaIds.Remove(id);
+        if (string.Equals(_settings.ActivePersonaId, id, StringComparison.Ordinal))
+        {
+            // 제거된 항목이 활성이면 남은 첫 항목으로 자동 전환, 없으면 비활성.
+            _settings.ActivePersonaId = _settings.RegisteredPersonaIds.Count > 0
+                ? _settings.RegisteredPersonaIds[0]
+                : null;
+        }
+        RefreshPersonaList();
+    }
+
+    /// <summary>
+    /// 창이 "저장"(DialogResult=true) 외 경로로 닫히면 페르소나 목록 변경을 스냅샷으로 복구.
+    /// 디스크에 이미 새 폴더가 생성된 경우(신규/불러오기)에도 설정에 등록되지 않으므로 앱에서는 보이지 않는다.
+    /// </summary>
+    private void OnWindowClosing(object? sender, System.ComponentModel.CancelEventArgs e)
+    {
+        if (DialogResult == true) return;
+
+        _settings.RegisteredPersonaIds.Clear();
+        _settings.RegisteredPersonaIds.AddRange(_originalRegisteredIds);
+        _settings.ActivePersonaId = _originalActiveId;
+    }
+
+    private void OnDialogueIntervalChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        UpdateDialogueIntervalLabel();
+    }
+
+    private void UpdateDialogueIntervalLabel()
+    {
+        if (DialogueIntervalLabel == null) return;
+        DialogueIntervalLabel.Text = $"{(int)Math.Round(DialogueIntervalSlider.Value)}초";
     }
 
     private void RefreshPreviews()
@@ -235,25 +395,6 @@ public partial class SettingsWindow : Window
         ImageHiddenNote.Visibility = personaOn ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    private void RefreshPersonaStatus()
-    {
-        bool exists = PersonaStore.Exists();
-        if (exists)
-        {
-            var data = PersonaStore.Load();
-            var seedCount = data?.SeedLines?.Count ?? 0;
-            var name = data?.Name ?? "설정됨";
-            PersonaStatusBadge.Background = (System.Windows.Media.Brush)FindResource("SuccessLightBrush");
-            PersonaStatusText.Foreground = (System.Windows.Media.Brush)FindResource("SuccessBrush");
-            PersonaStatusText.Text = $"\u2713 {name} \u00B7 대사 {seedCount}개";
-        }
-        else
-        {
-            PersonaStatusBadge.Background = (System.Windows.Media.Brush)FindResource("MutedBrush");
-            PersonaStatusText.Foreground = (System.Windows.Media.Brush)FindResource("TextMutedBrush");
-            PersonaStatusText.Text = "미설정 — 아래 편집 버튼으로 설정하세요";
-        }
-    }
 
     private void OnToggleStateImages(object sender, RoutedEventArgs e)
     {
@@ -446,6 +587,7 @@ public partial class SettingsWindow : Window
         _settings.StartWithWindows = AutoStartCheck.IsChecked == true;
         _settings.NoRestMode = NoRestCheck.IsChecked == true;
         _settings.DebugMode = DebugModeCheck.IsChecked == true;
+        _settings.DialogueIntervalSeconds = (int)Math.Round(DialogueIntervalSlider.Value);
         _settings.PersonaEnabled = PersonaEnabledCheck.IsChecked == true;
 
         // API 설정
@@ -460,4 +602,22 @@ public partial class SettingsWindow : Window
         _settings.Save();
         DialogResult = true;
     }
+}
+
+/// <summary>
+/// SettingsWindow의 페르소나 목록 항목 ViewModel.
+/// 불변 POCO + 계산 프로퍼티. 리스트가 통째로 갱신되므로 INotifyPropertyChanged 불필요.
+/// </summary>
+public sealed class PersonaListItem
+{
+    public string Id { get; set; } = string.Empty;
+    public string DisplayName { get; set; } = string.Empty;
+    public string SubText { get; set; } = string.Empty;
+    public bool IsActive { get; set; }
+
+    public Visibility ActiveBadgeVisibility => IsActive ? Visibility.Visible : Visibility.Collapsed;
+    public bool CanActivate => !IsActive;
+    public System.Windows.Media.Brush RowBackground => IsActive
+        ? new SolidColorBrush(Color.FromArgb(0x1F, 0x22, 0xC5, 0x5E))
+        : System.Windows.Media.Brushes.Transparent;
 }

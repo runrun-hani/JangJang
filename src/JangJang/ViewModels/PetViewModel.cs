@@ -63,7 +63,8 @@ public partial class PetViewModel : ObservableObject
     private ImageSource? TryLoadPersonaPortrait()
     {
         if (!_settings.PersonaEnabled) return null;
-        var data = PersonaStore.Load();
+        if (string.IsNullOrEmpty(_settings.ActivePersonaId)) return null;
+        var data = PersonaStore.Load(_settings.ActivePersonaId);
         if (data == null || string.IsNullOrEmpty(data.PortraitFileName)) return null;
         var path = PersonaStore.GetPortraitFullPath(data);
         if (!File.Exists(path)) return null;
@@ -127,12 +128,13 @@ public partial class PetViewModel : ObservableObject
         if (state != prevState)
             PetImageSource = GetImageForState(state);
 
-        // 대사
+        // 대사: 상태 전환 시 즉시, 그 외에는 설정된 주기(초)마다 교체.
+        // 틱은 1초 간격이므로 cooldown = 초 단위.
         _dialogueCooldown--;
         if (state != prevState || _dialogueCooldown <= 0)
         {
             StatusText = Dialogue.GetLine(state, annoyance, _monitor.WorkLog.TodaySeconds);
-            _dialogueCooldown = 25; // ~25초 간격, 상태 전환 시에는 즉시 교체 (위 조건)
+            _dialogueCooldown = _settings.DialogueIntervalSecondsClamped;
         }
 
         switch (state)
