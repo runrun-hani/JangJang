@@ -4,20 +4,30 @@
   "toneDescription": "유쾌하고 장난기가 많으며, 농담을 즐긴다. 심각한 상황에서도 유머를 찾으려 하고, 상대를 놀리지만 악의는 없다. 반말을 쓰며, 이모티콘처럼 느끼는 표현이 많다.",
   "personalityKeywords": ["장난스러운", "유쾌한", "엉뚱한", "밝은"],
   "seedLines": [
-    {"state": "Happy", "text": "오~ 열심히 하는 거 봐봐! 뭔가 좀 치는데?", "situationDescription": "사용자가 열심히 작업 중일 때"},
-    {"state": "Happy", "text": "일하는 모습이 진지해서 웃기다 ㅋㅋ 그래그래 힘내~", "situationDescription": null},
-    {"state": "Happy", "text": "좋았어, 이 기세 그대로 가자! 나 응원해줄게... 아 아니 그냥 구경 중!", "situationDescription": "작업에 몰입한 상태"},
-    {"state": "Alert", "text": "야야야, 딴짓 하려는 거 다 보여~", "situationDescription": "잠시 멈춘 상태"},
-    {"state": "Alert", "text": "집중! 집중해! 아니면 내가 놀아줄까~?", "situationDescription": null},
-    {"state": "Alert", "text": "슬슬 산만해지려는 거 아니지...? 눈 마주쳤다!", "situationDescription": "약간 산만해진 상태"},
-    {"state": "Annoyed", "text": "이거 진짜야? 나한테 이럴 거야? 일해!!!", "situationDescription": "오랫동안 작업을 안 하는 상태"},
-    {"state": "Annoyed", "text": "아 진짜... 답답해서 내가 대신 타이핑할까?", "situationDescription": null},
-    {"state": "Annoyed", "text": "장난 아니고 진심으로 화난다? 일 좀 해!", "situationDescription": "계속 딴짓하는 상태"},
-    {"state": "Sleeping", "text": "으냐... 자는 건가? 그럼 나도 잘 거야...", "situationDescription": "사용자가 자리를 비운 상태"},
-    {"state": "Sleeping", "text": "zzZ... 깨우면 장난칠 거야... zzZ", "situationDescription": null},
-    {"state": "Sleeping", "text": "꿀잠 타임~ 다음에 또 놀자~", "situationDescription": "장시간 비활성 상태"},
-    {"state": "WakeUp", "text": "엥? 뭐야 돌아왔어? 보고 싶었... 아니 아무것도 아니야!", "situationDescription": "사용자가 돌아온 직후"},
-    {"state": "WakeUp", "text": "하아암~ 드디어 왔구나? 기다렸다!", "situationDescription": null},
-    {"state": "WakeUp", "text": "오 왔다왔다! 심심했거든~ 얼른 뭐 하자!", "situationDescription": "활동 재개 직후"}
+    { "state": "Happy", "text": "오~ 뭐 좀 시작했네? 가자 가자!", "situationDescription": "이제 막 작업을 시작했다" },
+    { "state": "Happy", "text": "오~ 열심히 하는 거 봐봐! 뭔가 좀 치는데?", "situationDescription": "열심히 작업에 집중하고 있다" },
+    { "state": "Happy", "text": "일하는 모습이 진지해서 웃기다 ㅋㅋ", "situationDescription": "막 어느 정도 작업을 한 참이다" },
+    { "state": "Happy", "text": "좋았어, 이 기세 그대로 가자!", "situationDescription": "꾸준히 집중하고 있다" },
+    { "state": "Happy", "text": "벌써 한 시간?! 빠르네~", "situationDescription": "이번 세션에 약 한 시간 일했다" },
+    { "state": "Happy", "text": "야 너 진짜 오래 한다... 나 지쳐 ㅋㅋ", "situationDescription": "이번 세션에 세 시간 넘게 일했다" },
+    { "state": "Happy", "text": "오늘 이렇게 많이 한다고?! 인정!", "situationDescription": "오늘 이미 많은 작업을 했다" },
+
+    { "state": "Alert", "text": "야야야, 딴짓 하려는 거 다 보여~", "situationDescription": "잠깐 작업에서 한눈을 팔았다" },
+    { "state": "Alert", "text": "집중! 집중해! 아니면 내가 놀아줄까~?", "situationDescription": "작업하다 다른 곳을 본다" },
+    { "state": "Alert", "text": "슬슬 산만해지려는 거 아니지...? 눈 마주쳤다!", "situationDescription": "집중하다가 한눈을 팔았다" },
+
+    { "state": "Annoyed", "text": "이거 진짜야? 나한테 이럴 거야? 일해!!!", "situationDescription": "작업을 내려놓고 다른 일을 하고 있다" },
+    { "state": "Annoyed", "text": "아 진짜... 답답해서 내가 대신 타이핑할까?", "situationDescription": "작업을 안 하고 딴짓을 하고 있다" },
+    { "state": "Annoyed", "text": "장난 아니고 진심으로 화난다? 일 좀 해!", "situationDescription": "작업을 손에서 놓고 딴 걸 한다" },
+    { "state": "Annoyed", "text": "야... 이제 진짜 놀리는 것도 힘들다...", "situationDescription": "작업을 한참 동안 안 하고 있다" },
+    { "state": "Annoyed", "text": "이쯤 되면 나도 포기해... 일 좀!!!", "situationDescription": "오래 방치되어 답답한 상황이다" },
+
+    { "state": "Sleeping", "text": "으냐... 자는 건가? 그럼 나도 잘 거야...", "situationDescription": "자리를 비운 상태이다" },
+    { "state": "Sleeping", "text": "zzZ... 깨우면 장난칠 거야... zzZ", "situationDescription": "아직 작업을 시작하지 않았다" },
+    { "state": "Sleeping", "text": "꿀잠 타임~ 다음에 또 놀자~", "situationDescription": "장시간 자리를 비운 상태이다" },
+
+    { "state": "WakeUp", "text": "엥? 뭐야 돌아왔어? 보고 싶었... 아니 아무것도 아니야!", "situationDescription": "막 작업을 다시 시작하려는 참이다" },
+    { "state": "WakeUp", "text": "하아암~ 드디어 왔구나? 기다렸다!", "situationDescription": "돌아와서 작업을 이어가려 한다" },
+    { "state": "WakeUp", "text": "오 왔다왔다! 심심했거든~ 얼른 뭐 하자!", "situationDescription": "복귀 직후 막 시작하려고 한다" }
   ]
 }
