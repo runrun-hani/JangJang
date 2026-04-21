@@ -39,7 +39,7 @@ Write-Host "✓ 압축 완료: $ZipPath" -ForegroundColor Green
 # 4. 배포 폴더에 복사
 # 기존 파일에 덮어쓰기 후 이름 변경 → Google Drive 공유 링크 유지
 if (-not (Test-Path $DeployPath)) { New-Item -ItemType Directory -Path $DeployPath | Out-Null }
-$Existing = Get-ChildItem $DeployPath -Filter "JangJang*.zip" | Select-Object -First 1
+$Existing = Get-ChildItem $DeployPath -Filter "$AssemblyName*.zip" | Select-Object -First 1
 if ($Existing) {
     Copy-Item $ZipPath $Existing.FullName -Force          # 기존 파일에 내용 덮어쓰기 (파일 ID 유지)
     if ($Existing.Name -ne $ZipName) {
