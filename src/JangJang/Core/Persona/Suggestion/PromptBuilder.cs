@@ -32,6 +32,11 @@ public static class PromptBuilder
         sb.AppendLine(context.PresetDescription);
         if (context.PersonalityKeywords.Count > 0)
             sb.AppendLine($"성격 키워드: {string.Join(", ", context.PersonalityKeywords)}");
+        if (!string.IsNullOrWhiteSpace(context.CustomToneDescription)
+            && !string.Equals(context.CustomToneDescription.Trim(), context.PresetDescription?.Trim(), StringComparison.Ordinal))
+        {
+            sb.AppendLine($"사용자 정의 말투: {context.CustomToneDescription.Trim()}");
+        }
         if (!string.IsNullOrWhiteSpace(context.CustomNotes))
             sb.AppendLine($"추가 메모: {context.CustomNotes}");
         sb.AppendLine();

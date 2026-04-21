@@ -37,6 +37,11 @@ public partial class PersonaWindow : Window
     // 편집 대상. null이면 신규 생성 → 저장 시 새 GUID 부여.
     private PersonaData? _editTarget;
 
+    // AI 추천의 "편집" 버튼으로 DialogueBox에 채워진 원본 대사.
+    // 다음 "추가" 클릭 시 Edited/Accepted 피드백으로 기록된다.
+    // 다른 씨앗 선택·상태 탭 변경 시 해제된다.
+    private string? _pendingEditOriginal;
+
     /// <summary>
     /// 저장된 페르소나 Id. 저장 전에는 null, 저장 후에는 편집 대상의 Id.
     /// 호출자(Settings 등)가 저장 결과를 활용할 때 참조.
@@ -237,6 +242,7 @@ public partial class PersonaWindow : Window
         foreach (var seed in _allSeeds.Where(s => s.State == _currentState))
             _filteredSeeds.Add(seed);
 
+        _pendingEditOriginal = null;
         DialogueBox.Clear();
         SituationBox.Clear();
         RefreshStateButtonCounts();
@@ -327,6 +333,7 @@ public partial class PersonaWindow : Window
     {
         if (SeedListBox.SelectedItem is SeedLine line)
         {
+            _pendingEditOriginal = null;
             DialogueBox.Text = line.Text;
             SituationBox.Text = line.SituationDescription ?? string.Empty;
         }
@@ -343,12 +350,36 @@ public partial class PersonaWindow : Window
         }
 
         var situation = SituationBox.Text?.Trim();
+        var situationText = string.IsNullOrEmpty(situation) ? null : situation;
+
+        SeedLineSource source;
+        if (_pendingEditOriginal != null)
+        {
+            var original = _pendingEditOriginal;
+            _pendingEditOriginal = null;
+            var isEdited = !string.Equals(text, original, StringComparison.Ordinal);
+            source = isEdited ? SeedLineSource.AiEdited : SeedLineSource.AiSuggested;
+
+            FeedbackStore.Append(_editTarget?.Id, new DialogueFeedback
+            {
+                OriginalText = original,
+                EditedText = isEdited ? text : null,
+                Type = isEdited ? FeedbackType.Edited : FeedbackType.Accepted,
+                State = _currentState,
+                Timestamp = DateTime.UtcNow
+            });
+        }
+        else
+        {
+            source = SeedLineSource.UserWritten;
+        }
+
         var newLine = new SeedLine
         {
             Text = text,
-            SituationDescription = string.IsNullOrEmpty(situation) ? null : situation,
+            SituationDescription = situationText,
             State = _currentState,
-            Source = SeedLineSource.UserWritten,
+            Source = source,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -469,6 +500,7 @@ public partial class PersonaWindow : Window
         {
             PresetDescription = preset?.ToneDescription ?? string.Empty,
             PersonalityKeywords = preset?.PersonalityKeywords ?? new(),
+            CustomToneDescription = _editTarget?.CustomToneDescription,
             CustomNotes = PersonalityNotesBox.Text?.Trim(),
             TargetState = _currentState,
             ExistingLines = BuildExistingLinesMap(),
@@ -546,8 +578,11 @@ public partial class PersonaWindow : Window
         };
         editBtn.Click += (_, _) =>
         {
+            _pendingEditOriginal = text;
             DialogueBox.Text = text;
             SituationBox.Clear();
+            DialogueBox.Focus();
+            DialogueBox.CaretIndex = DialogueBox.Text?.Length ?? 0;
         };
 
         var rejectBtn = new System.Windows.Controls.Button

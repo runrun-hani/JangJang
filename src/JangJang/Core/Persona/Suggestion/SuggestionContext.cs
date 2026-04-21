@@ -14,6 +14,9 @@ public sealed class SuggestionContext
     /// <summary>프리셋의 성격 키워드</summary>
     public List<string> PersonalityKeywords { get; set; } = new();
 
+    /// <summary>페르소나에 저장된 사용자 정의 말투 설명. PresetDescription 위에 덮어쓰는 의미로 프롬프트에 포함된다.</summary>
+    public string? CustomToneDescription { get; set; }
+
     /// <summary>사용자가 추가한 성격 메모 (선택)</summary>
     public string? CustomNotes { get; set; }
 
