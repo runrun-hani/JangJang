@@ -25,9 +25,7 @@ public class PersonaDataJsonTests
         {
             Name = "테스트 최애",
             PortraitFileName = "portrait.png",
-            ToneHint = "반말",
             PresetId = "tsundere",
-            CustomToneDescription = "퉁명스러운 반말",
             CustomPersonalityNotes = "화나면 말이 짧아짐",
             SeedLines = new List<SeedLine>
             {
@@ -43,7 +41,6 @@ public class PersonaDataJsonTests
         Assert.Equal(original.Name, loaded!.Name);
         Assert.Equal(original.PortraitFileName, loaded.PortraitFileName);
         Assert.Equal(original.PresetId, loaded.PresetId);
-        Assert.Equal(original.CustomToneDescription, loaded.CustomToneDescription);
         Assert.Equal(original.CustomPersonalityNotes, loaded.CustomPersonalityNotes);
         Assert.Equal(2, loaded.SeedLines.Count);
         Assert.Equal("집중하자", loaded.SeedLines[0].Text);
@@ -64,19 +61,21 @@ public class PersonaDataJsonTests
         Assert.NotNull(loaded);
         Assert.Equal(string.Empty, loaded!.Name);
         Assert.Null(loaded.PresetId);
-        Assert.Null(loaded.CustomToneDescription);
+        Assert.Null(loaded.CustomPersonalityNotes);
         Assert.Empty(loaded.SeedLines);
     }
 
     [Fact]
     public void BackwardCompatibility_LegacyJson_LoadsWithDefaults()
     {
-        // 기존 persona.json 형식 (State, Source, PresetId 없음)
+        // 기존 persona.json 형식 — 이제 제거된 ToneHint/CustomToneDescription 필드가 섞여있어도
+        // System.Text.Json은 모르는 필드를 조용히 무시하므로 로드가 성공해야 한다.
         var legacyJson = """
         {
           "Name": "레거시 캐릭터",
           "PortraitFileName": "portrait.png",
           "ToneHint": "반말",
+          "CustomToneDescription": "퉁명스러운 반말",
           "SeedLines": [
             { "Text": "집중!", "SituationDescription": "작업 중", "CreatedAt": "2026-04-01T10:00:00Z" },
             { "Text": "뭐해", "CreatedAt": "2026-04-02T15:30:00Z" }
@@ -88,9 +87,7 @@ public class PersonaDataJsonTests
 
         Assert.NotNull(loaded);
         Assert.Equal("레거시 캐릭터", loaded!.Name);
-        Assert.Equal("반말", loaded.ToneHint);
         Assert.Null(loaded.PresetId);
-        Assert.Null(loaded.CustomToneDescription);
         Assert.Equal(2, loaded.SeedLines.Count);
         // State 기본값: Happy, Source 기본값: UserWritten
         Assert.Equal(PetState.Happy, loaded.SeedLines[0].State);
@@ -133,37 +130,6 @@ public class PersonaDataJsonTests
     }
 
     [Fact]
-    public void Migration_ToneHint_CopiedToCustomToneDescription()
-    {
-        // PersonaStore.MigrateIfNeeded는 private이므로,
-        // 간접 검증: ToneHint만 있고 CustomToneDescription이 null인 JSON을 로드하면
-        // 마이그레이션이 발생해야 한다.
-        // PersonaStore.Load()는 실제 파일을 건드리므로, 여기서는 로직만 검증.
-        var data = new PersonaData
-        {
-            Name = "마이그레이션 테스트",
-            ToneHint = "반말",
-            CustomToneDescription = null
-        };
-
-        // 마이그레이션 시뮬레이션: 레거시 JSON → 새 구조
-        var json = """
-        {
-          "Name": "마이그레이션 테스트",
-          "ToneHint": "반말",
-          "SeedLines": []
-        }
-        """;
-
-        var loaded = JsonSerializer.Deserialize<PersonaData>(json, _options)!;
-        // PersonaStore.Load()가 호출하는 MigrateIfNeeded를 직접 실행할 수 없으므로
-        // 데이터 계약만 검증: ToneHint가 유지되고 CustomToneDescription은 null
-        Assert.Equal("반말", loaded.ToneHint);
-        Assert.Null(loaded.CustomToneDescription);
-        // 실제 마이그레이션은 PersonaStore.Load() 경유 시에만 발생 (통합 레벨)
-    }
-
-    [Fact]
     public void Id_RoundTrip_Preserved()
     {
         var original = new PersonaData
@@ -202,7 +168,6 @@ public class PersonaDataJsonTests
         {
             Name = "프리셋 테스트",
             PresetId = "tsundere",
-            CustomToneDescription = "퉁명스러운 반말",
             CustomPersonalityNotes = "화나면 말이 짧아짐",
             SeedLines = new List<SeedLine>
             {
@@ -214,7 +179,6 @@ public class PersonaDataJsonTests
         var loaded = JsonSerializer.Deserialize<PersonaData>(json, _options)!;
 
         Assert.Equal("tsundere", loaded.PresetId);
-        Assert.Equal("퉁명스러운 반말", loaded.CustomToneDescription);
         Assert.Equal("화나면 말이 짧아짐", loaded.CustomPersonalityNotes);
         Assert.Equal(SeedLineSource.Preset, loaded.SeedLines[0].Source);
     }

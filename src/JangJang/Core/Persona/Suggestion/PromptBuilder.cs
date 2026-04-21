@@ -27,31 +27,41 @@ public static class PromptBuilder
     {
         var sb = new StringBuilder();
 
-        // 1. 캐릭터 프로필
-        sb.AppendLine("## 캐릭터 프로필");
-        sb.AppendLine(context.PresetDescription);
-        if (context.PersonalityKeywords.Count > 0)
-            sb.AppendLine($"성격 키워드: {string.Join(", ", context.PersonalityKeywords)}");
-        if (!string.IsNullOrWhiteSpace(context.CustomToneDescription)
-            && !string.Equals(context.CustomToneDescription.Trim(), context.PresetDescription?.Trim(), StringComparison.Ordinal))
-        {
-            sb.AppendLine($"사용자 정의 말투: {context.CustomToneDescription.Trim()}");
-        }
+        // 1. 캐릭터 정의
+        //    사용자가 직접 작성한 CustomNotes가 유일한 공식 성격 입력. 프리셋은 편집 UI에서
+        //    대사/이름 초기값을 채우는 힌트일 뿐이므로 프롬프트에는 포함하지 않는다.
         if (!string.IsNullOrWhiteSpace(context.CustomNotes))
-            sb.AppendLine($"추가 메모: {context.CustomNotes}");
-        sb.AppendLine();
+        {
+            sb.AppendLine("## 캐릭터 성격 (공식 — 반드시 이 설명을 중심으로 따를 것)");
+            sb.AppendLine(context.CustomNotes.Trim());
+            sb.AppendLine();
+        }
 
-        // 2. 기존 대사 예시
-        if (context.ExistingLines.Count > 0)
+        // 2. 기존 대사 예시 — TargetState는 제외 (모방 편향 방지).
+        //    다른 상태 대사만 보여주어 "말투"를 참고하되, 현재 생성할 상태의
+        //    기존 대사는 "## 중복 금지"로 따로 전달한다.
+        var otherStateLines = context.ExistingLines
+            .Where(kv => kv.Key != context.TargetState && kv.Value.Count > 0)
+            .ToList();
+        if (otherStateLines.Count > 0)
         {
             sb.AppendLine("## 기존 대사 예시 (이 캐릭터의 말투 참고)");
-            foreach (var (state, lines) in context.ExistingLines)
+            foreach (var (state, lines) in otherStateLines)
             {
-                if (lines.Count == 0) continue;
                 sb.AppendLine($"[{state}]");
                 foreach (var line in lines.Take(5))
                     sb.AppendLine($"  - \"{line}\"");
             }
+            sb.AppendLine();
+        }
+
+        // 2-1. 중복 금지 — TargetState의 기존 대사만. "예시"가 아니라 "피해야 할 목록".
+        if (context.ExistingLines.TryGetValue(context.TargetState, out var existingInTarget)
+            && existingInTarget.Count > 0)
+        {
+            sb.AppendLine("## 중복 금지 (아래 대사와 같거나 거의 같은 표현은 만들지 말 것)");
+            foreach (var line in existingInTarget.Take(10))
+                sb.AppendLine($"  - \"{line}\"");
             sb.AppendLine();
         }
 
@@ -89,8 +99,18 @@ public static class PromptBuilder
         sb.AppendLine($"## 요청");
         sb.AppendLine($"상태: {context.TargetState} — {stateDesc}");
         sb.AppendLine($"위 캐릭터가 이 상태에서 할 법한 대사를 {count}개 생성하세요.");
-        sb.AppendLine($"각 대사는 한 줄, 20자 이내. 번호 없이 대사만 한 줄씩 출력하세요.");
+        sb.AppendLine($"각 대사는 20자 이내.");
         sb.AppendLine($"기존 대사와 동일하거나 거의 같은 대사는 생성하지 마세요. 새로운 표현을 사용하세요.");
+        sb.AppendLine();
+        sb.AppendLine($"## 출력 형식");
+        sb.AppendLine($"각 추천은 다음 형식으로 한 줄씩 출력하세요 (번호·글머리·따옴표 없이).");
+        sb.AppendLine($"대사 | 상황 설명");
+        sb.AppendLine();
+        sb.AppendLine($"상황 설명은 이 대사가 자연스럽게 나올 법한 사용자의 작업 맥락을 30자 이내의 평서문으로 적습니다.");
+        sb.AppendLine($"사용자의 작업 흐름(막 시작했다 / 오래 집중했다 / 자리를 비웠다 / 딴짓을 한다 등)을 구체적으로 서술하세요.");
+        sb.AppendLine($"예시:");
+        sb.AppendLine($"흥, 좀 하네. | 막 작업을 시작해 집중이 붙기 시작한 상황");
+        sb.AppendLine($"언제까지 그럴 거야? | 작업을 한참 안 하고 있어 답답한 상황");
 
         return sb.ToString();
     }

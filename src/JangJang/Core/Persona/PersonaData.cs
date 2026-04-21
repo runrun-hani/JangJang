@@ -23,20 +23,10 @@ public sealed class PersonaData
     /// </summary>
     public string PortraitFileName { get; set; } = "portrait.png";
 
-    /// <summary>
-    /// [레거시] 말투 프리셋 힌트. 기존 persona.json 하위 호환용.
-    /// 로드 시 CustomToneDescription이 비어있으면 이 값으로 채운다.
-    /// 새 저장 시에는 CustomToneDescription을 사용한다.
-    /// </summary>
-    public string? ToneHint { get; set; }
-
-    /// <summary>선택한 프리셋 ID (예: "tsundere"). null이면 프리셋 미사용.</summary>
+    /// <summary>선택한 프리셋 ID (예: "tsundere"). null이면 프리셋 미사용. 편집 UI에서 초기값 로드에만 사용.</summary>
     public string? PresetId { get; set; }
 
-    /// <summary>사용자 정의 말투 설명. 프리셋의 ToneDescription 위에 덮어쓴다.</summary>
-    public string? CustomToneDescription { get; set; }
-
-    /// <summary>사용자가 추가한 성격 메모. API 프롬프트에 포함된다.</summary>
+    /// <summary>사용자가 직접 작성하는 성격 설명. 편집 UI의 성격 메모 TextBox와 연결되며, API 프롬프트의 공식 캐릭터 성격으로 사용된다.</summary>
     public string? CustomPersonalityNotes { get; set; }
 
     /// <summary>씨앗 대사 풀</summary>

@@ -76,7 +76,6 @@ public static class PersonaStore
             if (data == null) return null;
             if (string.IsNullOrEmpty(data.Id))
                 data.Id = personaId;
-            MigrateIfNeeded(data);
             return data;
         }
         catch
@@ -139,7 +138,6 @@ public static class PersonaStore
                 }
             }
 
-            MigrateIfNeeded(data);
             var outJson = JsonSerializer.Serialize(data, _jsonOptions);
             File.WriteAllText(GetPersonaJsonPath(data.Id), outJson);
             return data.Id;
@@ -178,7 +176,6 @@ public static class PersonaStore
             Directory.Move(LegacyCurrentDir, destDir);
 
             // Id를 persist
-            MigrateIfNeeded(data);
             var outJson = JsonSerializer.Serialize(data, _jsonOptions);
             File.WriteAllText(GetPersonaJsonPath(newId), outJson);
             return newId;
@@ -205,13 +202,6 @@ public static class PersonaStore
             if (File.Exists(json))
                 yield return name;
         }
-    }
-
-    /// <summary>기존 persona.json에서 새 필드 보정.</summary>
-    private static void MigrateIfNeeded(PersonaData data)
-    {
-        if (string.IsNullOrEmpty(data.CustomToneDescription) && !string.IsNullOrEmpty(data.ToneHint))
-            data.CustomToneDescription = data.ToneHint;
     }
 
     /// <summary>

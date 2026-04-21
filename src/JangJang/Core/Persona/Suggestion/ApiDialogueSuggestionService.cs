@@ -1,3 +1,4 @@
+using System.IO;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
@@ -12,6 +13,19 @@ namespace JangJang.Core.Persona.Suggestion;
 public sealed class ApiDialogueSuggestionService : IDialogueSuggestionService
 {
     private static readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(30) };
+
+    // ─── 진단 로깅 ────────────────────────────────────────────────────────
+    // 추천 호출은 빈도가 낮아(사용자 버튼 클릭) 항상 기록해도 무해. 디렉토리가 없으면
+    // 자동 생성한다. A 런타임 로그와 구분을 위해 [SUGGEST] 태그를 사용한다.
+    //   로그: %AppData%/JangJang/persona-debug.log
+    // 로그 비활성화가 필요하면 이 파일의 WriteSuggestionDiagnostic 호출(한 곳)을 주석 처리.
+    private static readonly string DiagLogPath = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+        "JangJang", "persona-debug.log");
+
+    /// <summary>디버그 창(DebugWindow)에 추천 파이프라인 결과를 실시간 전달하는 이벤트.</summary>
+    public static event Action<SuggestionDebugEntry>? OnDebugEntry;
+    // ──────────────────────────────────────────────────────────────────────
 
     private readonly string _provider;
     private readonly string _baseUrl;
@@ -147,11 +161,27 @@ public sealed class ApiDialogueSuggestionService : IDialogueSuggestionService
         var systemPrompt = PromptBuilder.BuildSystemPrompt();
         var userPrompt = PromptBuilder.BuildUserPrompt(context, count);
 
-        var response = IsGemini
-            ? await CallGeminiNative(systemPrompt, userPrompt)
-            : await CallOpenAiCompat(systemPrompt, userPrompt, 200, 0.8);
+        string rawResponse = string.Empty;
+        List<SuggestedLine> parsed = new();
+        Exception? captured = null;
+        try
+        {
+            rawResponse = IsGemini
+                ? await CallGeminiNative(systemPrompt, userPrompt)
+                : await CallOpenAiCompat(systemPrompt, userPrompt, 200, 0.8);
 
-        return ParseTextToLines(response);
+            parsed = ParseTextToLines(rawResponse);
+            return parsed;
+        }
+        catch (Exception ex)
+        {
+            captured = ex;
+            throw;
+        }
+        finally
+        {
+            WriteSuggestionDiagnostic(context, systemPrompt, userPrompt, rawResponse, parsed, captured);
+        }
     }
 
     public async Task<string?> TestConnectionAsync()
@@ -303,11 +333,35 @@ public sealed class ApiDialogueSuggestionService : IDialogueSuggestionService
         var lines = text.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         foreach (var line in lines)
         {
-            var cleaned = CleanLine(line);
-            if (!string.IsNullOrWhiteSpace(cleaned))
-                results.Add(new SuggestedLine { Text = cleaned });
+            var suggestion = ParseOneLine(line);
+            if (suggestion != null)
+                results.Add(suggestion);
         }
         return results;
+    }
+
+    /// <summary>
+    /// 한 줄을 "대사 | 상황 설명" 형식으로 파싱. 파이프가 없으면 대사만 세팅.
+    /// 번호·글머리·양끝 따옴표 제거는 CleanLine이 담당하고, 분리 이후 각 파트의
+    /// 잔여 따옴표는 StripQuotes로 한 번 더 정리한다.
+    /// </summary>
+    internal static SuggestedLine? ParseOneLine(string line)
+    {
+        var cleaned = CleanLine(line);
+        if (string.IsNullOrWhiteSpace(cleaned)) return null;
+
+        var pipeIdx = cleaned.IndexOf('|');
+        if (pipeIdx < 0)
+            return new SuggestedLine { Text = cleaned };
+
+        var dialogue = StripQuotes(cleaned.Substring(0, pipeIdx).Trim());
+        var situation = StripQuotes(cleaned.Substring(pipeIdx + 1).Trim());
+        if (string.IsNullOrWhiteSpace(dialogue)) return null;
+        return new SuggestedLine
+        {
+            Text = dialogue,
+            SituationDescription = string.IsNullOrWhiteSpace(situation) ? null : situation
+        };
     }
 
     internal static string CleanLine(string line)
@@ -327,4 +381,74 @@ public sealed class ApiDialogueSuggestionService : IDialogueSuggestionService
 
         return s.Trim();
     }
+
+    private static string StripQuotes(string s)
+    {
+        s = s.Trim();
+        if (s.Length >= 2 && s[0] == '"' && s[^1] == '"')
+            s = s[1..^1].Trim();
+        else if (s.Length >= 2 && s[0] == '\u201C' && s[^1] == '\u201D')
+            s = s[1..^1].Trim();
+        return s;
+    }
+
+    // ─── DIAG-BLOCK START ─────────────────────────────────────────────────
+    // 편집 시 AI 추천 호출의 진단 기록. 항상 기록(플래그 파일 불필요).
+    // 디렉토리가 없으면 자동 생성. [SUGGEST] 태그로 A 런타임 로그와 구분.
+    private static void WriteSuggestionDiagnostic(
+        SuggestionContext ctx,
+        string systemPrompt,
+        string userPrompt,
+        string rawResponse,
+        List<SuggestedLine> parsed,
+        Exception? exception)
+    {
+        try
+        {
+            var dir = Path.GetDirectoryName(DiagLogPath);
+            if (!string.IsNullOrEmpty(dir))
+                Directory.CreateDirectory(dir);
+
+            var sb = new StringBuilder();
+            sb.Append('[').Append(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")).AppendLine("] [SUGGEST]");
+            sb.Append("  TargetState: ").AppendLine(ctx.TargetState.ToString());
+            if (!string.IsNullOrWhiteSpace(ctx.CustomNotes))
+                sb.Append("  CustomNotes: ").AppendLine(ctx.CustomNotes);
+            sb.AppendLine("  --- System Prompt ---");
+            sb.AppendLine(systemPrompt);
+            sb.AppendLine("  --- User Prompt ---");
+            sb.AppendLine(userPrompt);
+            sb.AppendLine("  --- Raw Response ---");
+            sb.AppendLine(string.IsNullOrEmpty(rawResponse) ? "(empty)" : rawResponse);
+            sb.Append("  Parsed ").Append(parsed.Count).AppendLine("개:");
+            for (int i = 0; i < parsed.Count; i++)
+                sb.Append("    ").Append(i + 1).Append(". ").AppendLine(parsed[i].Text);
+            if (exception != null)
+                sb.Append("  EXCEPTION: ").Append(exception.GetType().Name).Append(": ").AppendLine(exception.Message);
+            sb.AppendLine();
+            File.AppendAllText(DiagLogPath, sb.ToString(), Encoding.UTF8);
+        }
+        catch
+        {
+            // 로그 실패 무시 (진단이 본 동작을 깨면 안 됨)
+        }
+
+        // 디버그 창 실시간 전달. 파일 로그 실패와 독립적으로 시도.
+        try
+        {
+            OnDebugEntry?.Invoke(new SuggestionDebugEntry(
+                DateTime.Now,
+                ctx.TargetState,
+                systemPrompt,
+                userPrompt,
+                rawResponse,
+                parsed,
+                exception?.Message));
+        }
+        catch
+        {
+            // 구독자 예외도 무시.
+        }
+    }
+    // ─── DIAG-BLOCK END ───────────────────────────────────────────────────
 }

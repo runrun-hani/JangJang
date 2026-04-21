@@ -494,13 +494,9 @@ public partial class PersonaWindow : Window
         var service = ApiDialogueSuggestionService.FromSettings(_settings);
         if (service == null) return;
 
-        // 컨텍스트 구성
-        var preset = _presets.Find(p => p.Id == _selectedPresetId);
+        // 컨텍스트 구성 — 프리셋 데이터는 프롬프트에 포함되지 않으므로 전달하지 않는다.
         var context = new SuggestionContext
         {
-            PresetDescription = preset?.ToneDescription ?? string.Empty,
-            PersonalityKeywords = preset?.PersonalityKeywords ?? new(),
-            CustomToneDescription = _editTarget?.CustomToneDescription,
             CustomNotes = PersonalityNotesBox.Text?.Trim(),
             TargetState = _currentState,
             ExistingLines = BuildExistingLinesMap(),
@@ -525,7 +521,7 @@ public partial class PersonaWindow : Window
             else
             {
                 foreach (var suggestion in suggestions)
-                    AddSuggestionItem(suggestion.Text);
+                    AddSuggestionItem(suggestion);
             }
         }
         catch (Exception ex)
@@ -544,12 +540,21 @@ public partial class PersonaWindow : Window
         }
     }
 
-    private void AddSuggestionItem(string text)
+    private void AddSuggestionItem(SuggestedLine suggestion)
     {
-        var panel = new System.Windows.Controls.StackPanel
+        var text = suggestion.Text;
+        var situation = suggestion.SituationDescription;
+
+        // 바깥: Vertical. 첫 줄은 대사+버튼(기존 스타일), 둘째 줄은 상황 설명(있을 때만).
+        var outer = new System.Windows.Controls.StackPanel
         {
-            Orientation = System.Windows.Controls.Orientation.Horizontal,
+            Orientation = System.Windows.Controls.Orientation.Vertical,
             Margin = new Thickness(0, 3, 0, 3)
+        };
+
+        var row = new System.Windows.Controls.StackPanel
+        {
+            Orientation = System.Windows.Controls.Orientation.Horizontal
         };
 
         var label = new TextBlock
@@ -567,7 +572,7 @@ public partial class PersonaWindow : Window
             Margin = new Thickness(0, 0, 4, 0),
             FontSize = 11
         };
-        acceptBtn.Click += (_, _) => AcceptSuggestion(text, text, FeedbackType.Accepted);
+        acceptBtn.Click += (_, _) => AcceptSuggestion(text, text, situation, FeedbackType.Accepted);
 
         var editBtn = new System.Windows.Controls.Button
         {
@@ -580,7 +585,7 @@ public partial class PersonaWindow : Window
         {
             _pendingEditOriginal = text;
             DialogueBox.Text = text;
-            SituationBox.Clear();
+            SituationBox.Text = situation ?? string.Empty;
             DialogueBox.Focus();
             DialogueBox.CaretIndex = DialogueBox.Text?.Length ?? 0;
         };
@@ -600,21 +605,37 @@ public partial class PersonaWindow : Window
                 State = _currentState,
                 Timestamp = DateTime.UtcNow
             });
-            panel.Visibility = Visibility.Collapsed;
+            outer.Visibility = Visibility.Collapsed;
         };
 
-        panel.Children.Add(label);
-        panel.Children.Add(acceptBtn);
-        panel.Children.Add(editBtn);
-        panel.Children.Add(rejectBtn);
-        SuggestionList.Items.Add(panel);
+        row.Children.Add(label);
+        row.Children.Add(acceptBtn);
+        row.Children.Add(editBtn);
+        row.Children.Add(rejectBtn);
+        outer.Children.Add(row);
+
+        if (!string.IsNullOrWhiteSpace(situation))
+        {
+            var situationBlock = new TextBlock
+            {
+                Text = $"  \u2014 {situation}",
+                Foreground = System.Windows.Media.Brushes.Gray,
+                FontSize = 11,
+                Margin = new Thickness(0, 2, 0, 0),
+                TextWrapping = TextWrapping.Wrap
+            };
+            outer.Children.Add(situationBlock);
+        }
+
+        SuggestionList.Items.Add(outer);
     }
 
-    private void AcceptSuggestion(string originalText, string finalText, FeedbackType type)
+    private void AcceptSuggestion(string originalText, string finalText, string? situation, FeedbackType type)
     {
         var newLine = new SeedLine
         {
             Text = finalText,
+            SituationDescription = string.IsNullOrWhiteSpace(situation) ? null : situation,
             State = _currentState,
             Source = type == FeedbackType.Accepted ? SeedLineSource.AiSuggested : SeedLineSource.AiEdited,
             CreatedAt = DateTime.UtcNow
@@ -785,7 +806,6 @@ public partial class PersonaWindow : Window
             Name = NameBox.Text.Trim(),
             PortraitFileName = portraitFileName,
             PresetId = _selectedPresetId,
-            CustomToneDescription = GetSelectedPreset()?.ToneDescription,
             CustomPersonalityNotes = PersonalityNotesBox.Text?.Trim(),
             SeedLines = new List<SeedLine>(_allSeeds)
         };
@@ -795,7 +815,6 @@ public partial class PersonaWindow : Window
         DialogResult = true;
     }
 
-    private PersonaPreset? GetSelectedPreset() => _presets.Find(p => p.Id == _selectedPresetId);
 
     private void OnCancelClick(object sender, RoutedEventArgs e)
     {

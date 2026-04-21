@@ -5,6 +5,7 @@ using System.Windows.Media;
 using JangJang.Core;
 using JangJang.Core.Persona;
 using JangJang.Core.Persona.Pipeline;
+using JangJang.Core.Persona.Suggestion;
 
 namespace JangJang.Views;
 
@@ -16,7 +17,12 @@ public partial class DebugWindow : Window
     {
         InitializeComponent();
         PersonaDialogueProvider.OnDebugEntry += OnDebugEntry;
-        Closed += (_, _) => PersonaDialogueProvider.OnDebugEntry -= OnDebugEntry;
+        ApiDialogueSuggestionService.OnDebugEntry += OnSuggestionDebugEntry;
+        Closed += (_, _) =>
+        {
+            PersonaDialogueProvider.OnDebugEntry -= OnDebugEntry;
+            ApiDialogueSuggestionService.OnDebugEntry -= OnSuggestionDebugEntry;
+        };
     }
 
     private void OnDebugEntry(DebugEntry entry)
@@ -193,5 +199,93 @@ public partial class DebugWindow : Window
         if (s < 60) return $"{s}s";
         if (s < 3600) return $"{s / 60}m{s % 60}s";
         return $"{s / 3600}h{(s % 3600) / 60}m";
+    }
+
+    // ─── 편집 시 AI 추천 (SUGGEST) 카드 ────────────────────────────────────
+    private void OnSuggestionDebugEntry(SuggestionDebugEntry entry)
+    {
+        Dispatcher.BeginInvoke(() => AddSuggestionEntry(entry));
+    }
+
+    private void AddSuggestionEntry(SuggestionDebugEntry e)
+    {
+        _entryCount++;
+        EntryCountText.Text = $" \u2014 {_entryCount}건";
+
+        var card = new Border
+        {
+            Background = (System.Windows.Media.Brush)FindResource("SurfaceBrush"),
+            BorderBrush = (System.Windows.Media.Brush)FindResource("PrimaryBrush"),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(6),
+            Padding = new Thickness(12, 10, 12, 10),
+            Margin = new Thickness(0, 0, 0, 8)
+        };
+
+        var stack = new StackPanel();
+
+        stack.Children.Add(new TextBlock
+        {
+            FontSize = 11,
+            Foreground = (System.Windows.Media.Brush)FindResource("TextMutedBrush"),
+            Text = $"{e.Timestamp:HH:mm:ss}  |  \uD83E\uDD16 추천  |  상태={GetStateName(e.TargetState)}"
+        });
+
+        AppendSuggestionSection(stack, "System Prompt", e.SystemPrompt);
+        AppendSuggestionSection(stack, "User Prompt", e.UserPrompt);
+        AppendSuggestionSection(stack, "Raw Response",
+            string.IsNullOrEmpty(e.RawResponse) ? "(empty)" : e.RawResponse);
+
+        string parsedText;
+        if (e.Parsed.Count == 0)
+        {
+            parsedText = "(파싱 결과 없음)";
+        }
+        else
+        {
+            var lines = new List<string>(e.Parsed.Count);
+            for (int i = 0; i < e.Parsed.Count; i++)
+            {
+                var p = e.Parsed[i];
+                var line = $"{i + 1}. {p.Text}";
+                if (!string.IsNullOrEmpty(p.SituationDescription))
+                    line += $"  |  {p.SituationDescription}";
+                lines.Add(line);
+            }
+            parsedText = string.Join("\n", lines);
+        }
+        AppendSuggestionSection(stack, $"Parsed ({e.Parsed.Count}개)", parsedText);
+
+        if (!string.IsNullOrEmpty(e.ExceptionMessage))
+            AppendSuggestionSection(stack, "Exception", e.ExceptionMessage);
+
+        card.Child = stack;
+        LogPanel.Children.Insert(0, card);
+
+        while (LogPanel.Children.Count > 100)
+            LogPanel.Children.RemoveAt(LogPanel.Children.Count - 1);
+
+        if (AutoScrollCheck.IsChecked == true)
+            LogScrollViewer.ScrollToTop();
+    }
+
+    private void AppendSuggestionSection(StackPanel stack, string label, string body)
+    {
+        stack.Children.Add(new TextBlock
+        {
+            Text = label,
+            FontSize = 10,
+            FontWeight = FontWeights.SemiBold,
+            Foreground = (System.Windows.Media.Brush)FindResource("TextSecondaryBrush"),
+            Margin = new Thickness(0, 6, 0, 2)
+        });
+        stack.Children.Add(new TextBlock
+        {
+            Text = body,
+            FontSize = 11,
+            TextWrapping = TextWrapping.Wrap,
+            FontFamily = new System.Windows.Media.FontFamily("Consolas, Courier New"),
+            Foreground = (System.Windows.Media.Brush)FindResource("TextBrush")
+        });
     }
 }
