@@ -16,7 +16,7 @@
     <Window.ContextMenu>
         <ContextMenu>
             <MenuItem Header="설정 (_S)" Click="OnSettingsClick"/>
-            <Separator/>
+            <Separator Margin="4,2"/>
             <MenuItem Header="종료 (_X)" Click="OnExitClick"/>
         </ContextMenu>
     </Window.ContextMenu>

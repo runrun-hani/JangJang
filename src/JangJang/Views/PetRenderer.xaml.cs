@@ -66,12 +66,12 @@ public partial class PetRenderer : UserControl
         // 역행 시 타이머 빨간 볼드
         if (vm.IsTimeReversing)
         {
-            WorkTimeBlock.Foreground = new SolidColorBrush(System.Windows.Media.Colors.Red);
+            WorkTimeBlock.Foreground = new SolidColorBrush(Color.FromRgb(0xEF, 0x44, 0x44)); // Red-500
             WorkTimeBlock.FontWeight = System.Windows.FontWeights.Bold;
         }
         else
         {
-            WorkTimeBlock.Foreground = new SolidColorBrush(Color.FromArgb(0xAA, 0xFF, 0xFF, 0xFF));
+            WorkTimeBlock.Foreground = new SolidColorBrush(Color.FromArgb(0xBB, 0xFF, 0xFF, 0xFF));
             WorkTimeBlock.FontWeight = System.Windows.FontWeights.Normal;
         }
     }

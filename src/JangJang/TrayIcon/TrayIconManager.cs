@@ -27,7 +27,7 @@ public class TrayIconManager : IDisposable
         _notifyIcon = new NotifyIcon
         {
             Icon = _currentIcon,
-            Text = "장장 - zzZ...",
+            Text = "자캐 타이머 - zzZ...",
             Visible = true,
             ContextMenuStrip = _contextMenu
         };
@@ -45,11 +45,11 @@ public class TrayIconManager : IDisposable
     {
         var (color, text) = state switch
         {
-            PetState.Happy => (DrawColor.Gold, "장장 - 열심히 일하는 중!"),
-            PetState.Alert => (DrawColor.Orange, "장장 - ...뭐 하는 거야?"),
-            PetState.Annoyed => (DrawColor.Red, "장장 - 일 안 해?!"),
-            PetState.WakeUp => (DrawColor.LightBlue, "장장 - ..."),
-            _ => (DrawColor.Gray, "장장 - zzZ...")
+            PetState.Happy => (DrawColor.Gold, "자캐 타이머 - 열심히 일하는 중!"),
+            PetState.Alert => (DrawColor.Orange, "자캐 타이머 - ...뭐 하는 거야?"),
+            PetState.Annoyed => (DrawColor.Red, "자캐 타이머 - 일 안 해?!"),
+            PetState.WakeUp => (DrawColor.LightBlue, "자캐 타이머 - ..."),
+            _ => (DrawColor.Gray, "자캐 타이머 - zzZ...")
         };
 
         var oldIcon = _currentIcon;

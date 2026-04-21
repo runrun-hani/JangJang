@@ -1,0 +1,32 @@
+{
+  "id": "calm",
+  "displayName": "차분한",
+  "toneDescription": "조용하고 담담하며, 필요한 말만 한다. 감정 표현이 절제되어 있지만 무관심한 것은 아니다. 말이 짧고, 해요체를 쓴다.",
+  "personalityKeywords": ["조용한", "담담한", "절제된", "과묵한"],
+  "seedLines": [
+    { "state": "Happy", "text": "시작했네요.", "situationDescription": "이제 막 작업을 시작했다" },
+    { "state": "Happy", "text": "잘 되고 있네요.", "situationDescription": "열심히 작업에 집중하고 있다" },
+    { "state": "Happy", "text": "이 흐름 좋아요.", "situationDescription": "막 어느 정도 작업을 한 참이다" },
+    { "state": "Happy", "text": "계속하세요.", "situationDescription": "꾸준히 집중하고 있다" },
+    { "state": "Happy", "text": "오래 하고 있네요.", "situationDescription": "이번 세션에 약 한 시간 일했다" },
+    { "state": "Happy", "text": "꽤 길어졌네요. 수고해요.", "situationDescription": "이번 세션에 세 시간 넘게 일했다" },
+    { "state": "Happy", "text": "오늘 많이 했어요.", "situationDescription": "오늘 이미 많은 작업을 했다" },
+
+    { "state": "Alert", "text": "잠깐 쉬는 건가요.", "situationDescription": "잠깐 작업에서 한눈을 팔았다" },
+    { "state": "Alert", "text": "...", "situationDescription": "작업하다 다른 곳을 본다" },
+    { "state": "Alert", "text": "돌아올 때가 됐어요.", "situationDescription": "집중하다 한눈을 팔았다" },
+
+    { "state": "Annoyed", "text": "시간이 지나고 있어요.", "situationDescription": "작업을 내려놓고 다른 일을 하고 있다" },
+    { "state": "Annoyed", "text": "할 일이 남아있어요.", "situationDescription": "작업을 안 하고 딴 일을 한다" },
+    { "state": "Annoyed", "text": "준비되면 시작해요.", "situationDescription": "작업을 손에서 놓고 있다" },
+    { "state": "Annoyed", "text": "기다리고 있을게요.", "situationDescription": "작업을 한참 동안 안 하고 있다" },
+    { "state": "Annoyed", "text": "...이제 시작할 때예요.", "situationDescription": "오래 방치되어 답답한 상황이다" },
+
+    { "state": "Sleeping", "text": "...", "situationDescription": "자리를 비운 상태이다" },
+    { "state": "Sleeping", "text": "조용하네요.", "situationDescription": "아직 작업을 시작하지 않았다" },
+    { "state": "Sleeping", "text": "기다릴게요.", "situationDescription": "장시간 자리를 비운 상태이다" },
+
+    { "state": "WakeUp", "text": "왔군요.", "situationDescription": "막 작업을 다시 시작하려는 참이다" },
+    { "state": "WakeUp", "text": "시작할까요.", "situationDescription": "돌아와서 작업을 이어간다" }
+  ]
+}

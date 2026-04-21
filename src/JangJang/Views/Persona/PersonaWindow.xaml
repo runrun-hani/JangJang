@@ -1,0 +1,230 @@
+<Window x:Class="JangJang.Views.Persona.PersonaWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="자캐 페르소나 편집" Width="580" Height="820"
+        MinWidth="540" MinHeight="720"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="CanResizeWithGrip"
+        Background="{StaticResource BackgroundBrush}">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="20">
+
+            <TextBlock Text="페르소나 편집" Style="{StaticResource PageTitle}" Margin="0,0,0,14"/>
+
+            <!-- ─── Card: 프리셋 선택 ─── -->
+            <Border Style="{StaticResource CardBorder}">
+                <StackPanel>
+                    <TextBlock Text="프리셋 선택" Style="{StaticResource SectionHeader}"/>
+                    <TextBlock Text="마우스를 올리면 성격 설명을 미리 볼 수 있습니다."
+                               Style="{StaticResource CaptionText}" Margin="0,0,0,6"/>
+                    <WrapPanel x:Name="PresetPanel"/>
+                </StackPanel>
+            </Border>
+
+            <!-- ─── Card: 기본 정보 ─── -->
+            <Border Style="{StaticResource CardBorder}">
+                <StackPanel>
+                    <TextBlock Text="기본 정보" Style="{StaticResource SectionHeader}"/>
+
+                    <!-- Portrait + Name -->
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                        <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                                CornerRadius="8" Width="72" Height="72" Margin="0,0,14,0"
+                                Background="{StaticResource MutedBrush}">
+                            <Grid>
+                                <TextBlock x:Name="PortraitPlaceholder" Text="?" FontSize="28" FontWeight="Bold"
+                                           Foreground="{StaticResource TextMutedBrush}"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                <Image x:Name="PreviewPortrait" Stretch="Uniform"
+                                       RenderOptions.BitmapScalingMode="HighQuality"/>
+                            </Grid>
+                        </Border>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="이름" Style="{StaticResource LabelText}" Margin="0,0,0,3"/>
+                            <TextBox x:Name="NameBox" Width="240" Margin="0,0,0,6" TextChanged="OnAnyInputChanged"/>
+                            <StackPanel Orientation="Horizontal">
+                                <Button Content="초상화 선택..." Click="OnSelectPortraitClick" FontSize="11" Padding="8,4"/>
+                                <Button Content="제거" Click="OnClearPortraitClick"
+                                        Style="{StaticResource GhostButton}" Margin="4,0,0,0" FontSize="11"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- Personality notes -->
+                    <TextBlock Text="추가 성격 메모 (선택)" Style="{StaticResource LabelText}" Margin="0,0,0,4"/>
+                    <TextBox x:Name="PersonalityNotesBox" MinHeight="72" MaxHeight="140"
+                             TextWrapping="Wrap" AcceptsReturn="True"
+                             VerticalScrollBarVisibility="Auto"/>
+                </StackPanel>
+            </Border>
+
+            <!-- ─── Card: 상태별 대사 ─── -->
+            <Border Style="{StaticResource CardBorder}" Padding="16,16,16,8">
+                <StackPanel>
+                    <TextBlock Text="상태별 대사" Style="{StaticResource SectionHeader}"/>
+
+                    <!-- State tabs -->
+                    <StackPanel x:Name="StateTabPanel" Orientation="Horizontal" Margin="0,0,0,8"/>
+
+                    <!-- Seed list (fixed height for scroll context) -->
+                    <Grid MinHeight="120" Height="200">
+                        <ListBox x:Name="SeedListBox"
+                                 SelectionChanged="OnSeedSelectionChanged"
+                                 HorizontalContentAlignment="Stretch">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Margin="0,2">
+                                        <TextBlock Text="{Binding Text}" FontSize="12" TextWrapping="Wrap"/>
+                                        <TextBlock Text="{Binding SituationDescription}" FontSize="10"
+                                                   Foreground="{StaticResource TextMutedBrush}" Margin="0,1,0,0">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding SituationDescription}" Value="{x:Null}">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding SituationDescription}" Value="">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+
+                        <Border x:Name="EmptyStatePanel" Visibility="Collapsed"
+                                Background="{StaticResource MutedBrush}" CornerRadius="6"
+                                VerticalAlignment="Center" HorizontalAlignment="Center"
+                                Padding="24,16">
+                            <StackPanel HorizontalAlignment="Center">
+                                <TextBlock Text="아직 대사가 없습니다" FontSize="13" FontWeight="SemiBold"
+                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           HorizontalAlignment="Center" Margin="0,0,0,4"/>
+                                <TextBlock Text="아래에서 직접 입력하거나 AI 생성을 사용해보세요."
+                                           FontSize="11" Foreground="{StaticResource TextMutedBrush}"
+                                           HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <!-- Edit area label (contextual) -->
+                    <TextBlock x:Name="EditAreaLabel" Text="새 대사 입력"
+                               Style="{StaticResource SubsectionHeader}" Margin="0,8,0,0"/>
+
+                    <!-- Dialogue field -->
+                    <Grid Margin="0,0,0,4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="대사" Style="{StaticResource LabelText}"
+                                   VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <TextBox Grid.Column="1" x:Name="DialogueBox"/>
+                    </Grid>
+
+                    <!-- Situation field + auto-generate button -->
+                    <Grid Margin="0,0,0,6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="0,0,8,0">
+                            <TextBlock Text="상황" Style="{StaticResource LabelText}" VerticalAlignment="Center"/>
+                            <TextBlock Text=" (선택)" FontSize="10" Foreground="{StaticResource TextMutedBrush}"
+                                       VerticalAlignment="Center"
+                                       ToolTip="상황을 입력하면 맥락에 맞는 대사를 더 정확히 매칭합니다."/>
+                        </StackPanel>
+                        <TextBox Grid.Column="1" x:Name="SituationBox"/>
+                        <Button Grid.Column="2" x:Name="AutoSituationBtn" Content="자동 생성"
+                                Click="OnAutoGenerateSituation"
+                                Style="{StaticResource GhostButton}"
+                                Margin="4,0,0,0" FontSize="10" Padding="6,4"
+                                ToolTip="AI가 대사에 맞는 상황 설명을 자동으로 생성합니다."/>
+                    </Grid>
+
+                    <!-- Always visible actions -->
+                    <Grid Margin="0,0,0,4">
+                        <Button Content="추가" Click="OnAddSeedClick" Padding="10,5"
+                                HorizontalAlignment="Left"/>
+                        <Button x:Name="AiSuggestButton" Content="대사 생성" Click="OnAiSuggestClick"
+                                Style="{StaticResource PrimaryButton}" Padding="12,5" FontSize="12"
+                                HorizontalAlignment="Right"/>
+                    </Grid>
+
+                    <!-- Selection-dependent actions -->
+                    <StackPanel x:Name="SelectionActionsPanel" Orientation="Horizontal"
+                                Visibility="Collapsed" Margin="0,0,0,4">
+                        <Button x:Name="UpdateBtn" Content="수정" Click="OnUpdateSeedClick" Padding="10,5"/>
+                        <Button x:Name="DeleteBtn" Content="삭제" Click="OnDeleteSeedClick" Padding="10,5"
+                                Style="{StaticResource DestructiveButton}" Margin="4,0,0,0"/>
+                        <Border Width="1" Background="{StaticResource BorderBrush}" Margin="10,2"/>
+                        <TextBlock Text="이동:" Style="{StaticResource LabelText}"
+                                   VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <ComboBox x:Name="MoveTargetCombo" Width="90" FontSize="11"/>
+                        <Button Content="이동" Click="OnMoveSeedClick" Padding="8,5" Margin="4,0,0,0" FontSize="11"/>
+                    </StackPanel>
+
+                    <!-- AI Suggestion panel -->
+                    <Border x:Name="SuggestionPanel" Visibility="Collapsed"
+                            Background="{StaticResource PrimaryLightBrush}"
+                            BorderBrush="{StaticResource PrimarySubtleBrush}"
+                            BorderThickness="1" CornerRadius="6" Padding="12" Margin="0,2,0,4">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                <TextBlock x:Name="SuggestionTitle" Text="추천 대사"
+                                           FontWeight="SemiBold" FontSize="12"
+                                           Foreground="{StaticResource TextBrush}"/>
+                                <Button x:Name="CloseSuggestionButton" Content="닫기"
+                                        Click="OnCloseSuggestionClick"
+                                        Style="{StaticResource GhostButton}" Margin="8,0,0,0" FontSize="10"/>
+                            </StackPanel>
+                            <ItemsControl x:Name="SuggestionList"/>
+
+                            <StackPanel x:Name="ApiKeyPrompt" Visibility="Collapsed" Margin="0,6,0,0">
+                                <TextBlock Text="대사 생성을 사용하려면 Gemini API 키가 필요합니다."
+                                           FontSize="11" TextWrapping="Wrap"
+                                           Foreground="{StaticResource TextBrush}"/>
+                                <TextBlock Text="Google AI Studio에서 30초만에 발급받을 수 있어요."
+                                           FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"
+                                           Margin="0,2,0,6"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Content="발급 페이지 열기" Click="OnOpenAiStudioClick"
+                                            FontSize="11" Padding="8,4"/>
+                                    <TextBox x:Name="InlineApiKeyBox" Width="200" Margin="6,0,4,0" FontSize="11"/>
+                                    <Button Content="저장" Click="OnSaveInlineApiKeyClick"
+                                            Style="{StaticResource PrimaryButton}" FontSize="11" Padding="10,4"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Border>
+
+            <!-- ─── Footer ─── -->
+            <StackPanel Margin="0,8,0,8">
+                <TextBlock x:Name="ValidationMessage" FontSize="11"
+                           Foreground="{StaticResource ErrorBrush}"
+                           Visibility="Collapsed" HorizontalAlignment="Right"
+                           Margin="0,0,0,6"/>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <Button Grid.Column="1" x:Name="SaveButton" Content="저장" Width="100"
+                            Click="OnSaveClick" Style="{StaticResource PrimaryButton}"/>
+                    <Button Grid.Column="2" Content="취소" Width="100"
+                            Click="OnCancelClick" Margin="8,0,0,0"/>
+                </Grid>
+            </StackPanel>
+
+        </StackPanel>
+    </ScrollViewer>
+</Window>

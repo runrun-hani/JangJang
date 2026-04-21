@@ -3,6 +3,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using JangJang.Core;
+using JangJang.Core.Persona;
 
 namespace JangJang.ViewModels;
 
@@ -19,6 +20,10 @@ public partial class PetViewModel : ObservableObject
     private ImageSource? _annoyedImage;
     private ImageSource? _sleepingImage;
     private ImageSource? _wakeUpImage;
+
+    // 페르소나 모드에서 모든 상태에 공통으로 사용하는 초상화
+    // null이면 페르소나 모드가 아니거나 로드 실패 → 기존 상태별 이미지 사용
+    private ImageSource? _personaPortrait;
 
     [ObservableProperty] private PetState _currentState = PetState.Sleeping;
     [ObservableProperty] private double _annoyanceLevel;
@@ -47,8 +52,23 @@ public partial class PetViewModel : ObservableObject
         _sleepingImage = LoadImage(_settings.SleepingImagePath, "pack://application:,,,/Resources/Sleeping.png");
         _wakeUpImage = LoadImage(_settings.WakeUpImagePath, "pack://application:,,,/Resources/WakeUp.png");
 
+        // 페르소나 모드: 활성화 + 페르소나 데이터 + 초상화 파일이 모두 존재하면 초상화 로드
+        // 이 초상화는 GetImageForState에서 모든 상태에 대해 반환됨
+        _personaPortrait = TryLoadPersonaPortrait();
+
         // 현재 상태에 맞는 이미지 적용
         PetImageSource = GetImageForState(CurrentState);
+    }
+
+    private ImageSource? TryLoadPersonaPortrait()
+    {
+        if (!_settings.PersonaEnabled) return null;
+        if (string.IsNullOrEmpty(_settings.ActivePersonaId)) return null;
+        var data = PersonaStore.Load(_settings.ActivePersonaId);
+        if (data == null || string.IsNullOrEmpty(data.PortraitFileName)) return null;
+        var path = PersonaStore.GetPortraitFullPath(data);
+        if (!File.Exists(path)) return null;
+        return LoadImage(path, null);
     }
 
     // 하위 호환
@@ -73,6 +93,10 @@ public partial class PetViewModel : ObservableObject
 
     private ImageSource? GetImageForState(PetState state)
     {
+        // 페르소나 모드에서 초상화가 로드되어 있으면 모든 상태에 공통 적용
+        if (_personaPortrait != null)
+            return _personaPortrait;
+
         var stateImage = state switch
         {
             PetState.Happy => _happyImage,
@@ -104,12 +128,13 @@ public partial class PetViewModel : ObservableObject
         if (state != prevState)
             PetImageSource = GetImageForState(state);
 
-        // 대사
+        // 대사: 상태 전환 시 즉시, 그 외에는 설정된 주기(초)마다 교체.
+        // 틱은 1초 간격이므로 cooldown = 초 단위.
         _dialogueCooldown--;
         if (state != prevState || _dialogueCooldown <= 0)
         {
             StatusText = Dialogue.GetLine(state, annoyance, _monitor.WorkLog.TodaySeconds);
-            _dialogueCooldown = state == PetState.Happy ? 8 : 5;
+            _dialogueCooldown = _settings.DialogueIntervalSecondsClamped;
         }
 
         switch (state)
