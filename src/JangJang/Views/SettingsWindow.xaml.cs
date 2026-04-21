@@ -7,6 +7,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using JangJang.Core;
 using JangJang.Core.Persona;
+using JangJang.Core.Persona.Embedding;
 using JangJang.Core.Persona.Suggestion;
 using JangJang.Views.Persona;
 using OpenFileDialog = Microsoft.Win32.OpenFileDialog;
@@ -76,6 +77,10 @@ public partial class SettingsWindow : Window
         PersonaItemsControl.ItemsSource = _personaItems;
         RefreshPersonaList();
         UpdateApiStatus();
+
+        // 임베딩 매칭: 저장된 설정을 먼저 반영한 뒤 모델 상태로 보정
+        EmbeddingMatchingCheck.IsChecked = settings.EmbeddingMatchingEnabled;
+        UpdateEmbeddingModelStatus();
 
         RefreshPreviews();
     }
@@ -433,6 +438,41 @@ public partial class SettingsWindow : Window
         }
     }
 
+    private void UpdateEmbeddingModelStatus()
+    {
+        bool installed = EmbeddingModelLocator.IsModelInstalled();
+        if (installed)
+        {
+            EmbeddingStatusText.Text = "설치됨 ✓";
+            EmbeddingStatusBadge.Background = (System.Windows.Media.Brush)FindResource("SuccessLightBrush");
+            EmbeddingStatusText.Foreground = (System.Windows.Media.Brush)FindResource("SuccessBrush");
+            EmbeddingMatchingCheck.IsEnabled = true;
+            EmbeddingHelpInstalled.Visibility = Visibility.Visible;
+            EmbeddingHelpMissing.Visibility = Visibility.Collapsed;
+        }
+        else
+        {
+            EmbeddingStatusText.Text = "미설치 ✗";
+            EmbeddingStatusBadge.Background = System.Windows.Media.Brushes.Transparent;
+            EmbeddingStatusText.Foreground = (System.Windows.Media.Brush)FindResource("TextMutedBrush");
+            EmbeddingMatchingCheck.IsEnabled = false;
+            EmbeddingMatchingCheck.IsChecked = false;  // 모델 없으면 강제 off
+            EmbeddingHelpInstalled.Visibility = Visibility.Collapsed;
+            EmbeddingHelpMissing.Visibility = Visibility.Visible;
+        }
+    }
+
+    private void OnOpenEmbeddingFolderClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var folder = EmbeddingModelLocator.GetStandardPath();
+            Directory.CreateDirectory(folder);  // 배치 편의를 위해 없으면 미리 생성
+            Process.Start(new ProcessStartInfo(folder) { UseShellExecute = true });
+        }
+        catch { }
+    }
+
     private void UpdateApiStatus()
     {
         bool hasKey = !string.IsNullOrWhiteSpace(GetApiKey());
@@ -589,6 +629,7 @@ public partial class SettingsWindow : Window
         _settings.DebugMode = DebugModeCheck.IsChecked == true;
         _settings.DialogueIntervalSeconds = (int)Math.Round(DialogueIntervalSlider.Value);
         _settings.PersonaEnabled = PersonaEnabledCheck.IsChecked == true;
+        _settings.EmbeddingMatchingEnabled = EmbeddingMatchingCheck.IsChecked == true;
 
         // API 설정
         var apiKey = GetApiKey();

@@ -3,6 +3,7 @@ using System.Threading;
 using System.Windows;
 using JangJang.Core;
 using JangJang.Core.Persona;
+using JangJang.Core.Persona.Embedding;
 using JangJang.TrayIcon;
 using JangJang.ViewModels;
 using JangJang.Views;
@@ -11,13 +12,11 @@ namespace JangJang;
 
 public partial class App : Application
 {
-    private const string EmbeddingModelFolderName = "multilingual-e5-small";
-
     private Mutex? _mutex;
     private ActivityMonitor? _monitor;
     private TrayIconManager? _trayManager;
     private NotificationManager? _notificationManager;
-    private PersonaDialogueProvider? _personaProvider;
+    private IDialogueProvider? _personaProvider;
 
     private void OnStartup(object sender, StartupEventArgs e)
     {
@@ -44,7 +43,7 @@ public partial class App : Application
         var petWindow = new PetWindow(viewModel, settings);
 
         _trayManager = new TrayIconManager(_monitor, petWindow, settings);
-        _notificationManager = new NotificationManager(_monitor);
+        _notificationManager = new NotificationManager(_monitor, settings);
 
         petWindow.Show();
         _monitor.Start();
@@ -58,22 +57,29 @@ public partial class App : Application
         var persona = PersonaStore.Load(settings.ActivePersonaId);
         if (persona == null || persona.SeedLines.Count == 0) return;
 
-        var modelFolder = ResolveModelFolder();
-        if (modelFolder == null) return;
+        // 1) 임베딩 경로: 사용자가 활성화했고 모델도 설치되어 있어야
+        if (settings.EmbeddingMatchingEnabled && EmbeddingModelLocator.IsModelInstalled())
+        {
+            var modelFolder = EmbeddingModelLocator.FindModelFolder()!;
+            try
+            {
+                var provider = PersonaDialogueProvider.Create(modelFolder, persona, monitor);
+                _personaProvider = provider;
+                Dialogue.SetProvider(provider);
+                return;
+            }
+            catch
+            {
+                // 임베딩 서비스 로드 실패 (모델 손상, 토크나이저 미스매치 등)
+                // → 아래 랜덤 경로로 폴백 (페르소나 경험은 보존)
+                (_personaProvider as IDisposable)?.Dispose();
+                _personaProvider = null;
+            }
+        }
 
-        try
-        {
-            _personaProvider = PersonaDialogueProvider.Create(modelFolder, persona, monitor);
-            Dialogue.SetProvider(_personaProvider);
-        }
-        catch
-        {
-            // 임베딩 서비스 로드 실패 (모델 손상, 토크나이저 미스매치 등)
-            // → 기본 Provider 유지. UI에는 나중 단계에서 안내 토스트 추가 가능.
-            _personaProvider?.Dispose();
-            _personaProvider = null;
-            Dialogue.ResetToDefault();
-        }
+        // 2) 랜덤 경로: 임베딩 off / 모델 없음 / 임베딩 로드 실패
+        _personaProvider = new PersonaRandomDialogueProvider(persona);
+        Dialogue.SetProvider(_personaProvider);
     }
 
     /// <summary>
@@ -97,35 +103,9 @@ public partial class App : Application
         catch { }
     }
 
-    /// <summary>
-    /// 임베딩 모델 폴더 탐색. 표준 위치 → 포터블 위치 순서로 시도.
-    /// </summary>
-    private static string? ResolveModelFolder()
-    {
-        // 1. 표준 위치: %AppData%/JangJang/Models/multilingual-e5-small/
-        var appDataPath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "JangJang", "Models", EmbeddingModelFolderName);
-        if (Directory.Exists(appDataPath)) return appDataPath;
-
-        // 2. 포터블/개발 폴백: 실행 파일 옆의 multilingual-e5-small/
-        var exePath = Environment.ProcessPath;
-        if (!string.IsNullOrEmpty(exePath))
-        {
-            var exeDir = Path.GetDirectoryName(exePath);
-            if (!string.IsNullOrEmpty(exeDir))
-            {
-                var localPath = Path.Combine(exeDir, EmbeddingModelFolderName);
-                if (Directory.Exists(localPath)) return localPath;
-            }
-        }
-
-        return null;
-    }
-
     private void OnExit(object sender, ExitEventArgs e)
     {
-        _personaProvider?.Dispose();
+        (_personaProvider as IDisposable)?.Dispose();
         _notificationManager?.Dispose();
         _monitor?.Dispose();
         _trayManager?.Dispose();

@@ -134,6 +134,54 @@
 
                             <Separator Margin="0,12,0,12"/>
 
+                            <!-- ─── Embedding matching section ─── -->
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                <TextBlock Text="임베딩 매칭" Style="{StaticResource LabelText}"
+                                           VerticalAlignment="Center"/>
+                                <Border x:Name="EmbeddingStatusBadge" CornerRadius="3"
+                                        Padding="6,1" Margin="8,0,0,0" VerticalAlignment="Center">
+                                    <TextBlock x:Name="EmbeddingStatusText" FontSize="10"/>
+                                </Border>
+                            </StackPanel>
+
+                            <CheckBox x:Name="EmbeddingMatchingCheck" Content="임베딩 매칭 사용"
+                                      Margin="0,0,0,6"/>
+
+                            <!-- 설치됨 안내 -->
+                            <TextBlock x:Name="EmbeddingHelpInstalled"
+                                       Style="{StaticResource CaptionText}"
+                                       Visibility="Collapsed" TextWrapping="Wrap"
+                                       Text="현재 상황(작업 시간·유휴 시간·행동 패턴)을 문장으로 요약한 뒤, 작성된 대사 중 의미가 가장 가까운 것을 고릅니다.&#x0a;• 랜덤 매칭: 상태(집중/알림/짜증/수면) 안에서 균등 랜덤&#x0a;• 임베딩 매칭: 상황 맥락까지 반영 — &quot;긴 집중 끝의 짜증&quot;과 &quot;막 딴짓 시작했을 때의 짜증&quot;을 구분&#x0a;작성된 대사가 많고 상황 설명이 적힌 대사가 많을수록 효과가 큽니다. 대사가 적거나 톤이 비슷하면 랜덤으로도 충분히 자연스럽습니다."/>
+
+                            <!-- 미설치 안내 -->
+                            <StackPanel x:Name="EmbeddingHelpMissing" Visibility="Collapsed">
+                                <TextBlock Style="{StaticResource CaptionText}" TextWrapping="Wrap"
+                                           Text="임베딩 모델을 설치하면 현재 상황에 더 어울리는 대사를 골라줍니다. 없어도 페르소나 모드는 작동하며, 상태별 대사 풀에서 랜덤으로 선택됩니다."/>
+                                <TextBlock Style="{StaticResource CaptionText}" Margin="0,6,0,0"
+                                           Text="설치 방법: 아래 두 파일을 폴더에 배치한 뒤 앱을 재시작하세요."/>
+                                <TextBlock Style="{StaticResource CaptionText}" FontFamily="Consolas"
+                                           Margin="0,2,0,0"
+                                           Text="%AppData%\JangJang\Models\multilingual-e5-small\"/>
+                                <TextBlock Style="{StaticResource CaptionText}" Margin="0,6,0,0"
+                                           Text="• model.onnx (약 120MB)"/>
+                                <TextBlock Style="{StaticResource CaptionText}" FontFamily="Consolas"
+                                           TextWrapping="Wrap"
+                                           Text="  https://huggingface.co/Xenova/multilingual-e5-small/resolve/main/onnx/model.onnx"/>
+                                <TextBlock Style="{StaticResource CaptionText}" Margin="0,2,0,0"
+                                           Text="• sentencepiece.bpe.model (약 5MB)"/>
+                                <TextBlock Style="{StaticResource CaptionText}" FontFamily="Consolas"
+                                           TextWrapping="Wrap"
+                                           Text="  https://huggingface.co/Xenova/multilingual-e5-small/resolve/main/sentencepiece.bpe.model"/>
+                                <Button Content="폴더 열기" Click="OnOpenEmbeddingFolderClick"
+                                        Style="{StaticResource GhostButton}" FontSize="11"
+                                        HorizontalAlignment="Left" Margin="0,8,0,0"/>
+                            </StackPanel>
+
+                            <TextBlock Style="{StaticResource CaptionText}" Margin="0,6,0,0"
+                                       Text="임베딩 설정 변경은 재시작 후 반영됩니다."/>
+
+                            <Separator Margin="0,12,0,12"/>
+
                             <!-- API settings — collapsible -->
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                                 <Button x:Name="ToggleApiBtn" Content="▶ 대사 생성 API 설정"

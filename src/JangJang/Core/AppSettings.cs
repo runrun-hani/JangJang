@@ -42,10 +42,19 @@ public class AppSettings
     public string TargetDisplayName { get; set; } = "Clip Studio Paint";
 
     /// <summary>
-    /// 자캐 페르소나 모드 활성화 여부. true이고 페르소나 데이터 + 임베딩 모델이 모두 준비되어 있을 때만
-    /// PersonaDialogueProvider가 동작한다. 둘 중 하나라도 부재하면 자동으로 기본(치와와) Provider로 폴백.
+    /// 자캐 페르소나 모드 활성화 여부. true이면 페르소나의 작성 대사 풀이 사용된다.
+    /// 매칭 방식은 EmbeddingMatchingEnabled로 결정된다:
+    ///   - false(또는 모델 미설치): PersonaRandomDialogueProvider — 상태별 랜덤
+    ///   - true + 모델 설치됨: PersonaDialogueProvider — 임베딩 파이프라인
     /// </summary>
     public bool PersonaEnabled { get; set; }
+
+    /// <summary>
+    /// 임베딩 기반 매칭 사용 여부. 기본값 false — 모델 다운로드 없이도 페르소나 모드를 즉시 쓸 수 있게.
+    /// true여도 모델이 없으면 자동으로 랜덤 매칭으로 폴백.
+    /// 설정 변경은 앱 재시작 후 반영된다 (Provider는 스타트업에서 1회 결정).
+    /// </summary>
+    public bool EmbeddingMatchingEnabled { get; set; }
 
     /// <summary>
     /// 설정에 등록된 페르소나 Id 화이트리스트. 폴더가 실제로 존재해도 여기에 없으면 앱에서 보이지 않는다.

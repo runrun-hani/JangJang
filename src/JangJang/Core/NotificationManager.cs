@@ -1,17 +1,23 @@
 using System.Windows.Threading;
+using JangJang.Core.Persona;
 using Microsoft.Toolkit.Uwp.Notifications;
 
 namespace JangJang.Core;
 
 public class NotificationManager : IDisposable
 {
+    private const string DefaultTitle = "자캐 타이머";
+    private const string FallbackMessage = "뭐하냐?";
+
     private readonly ActivityMonitor _monitor;
+    private readonly AppSettings _settings;
     private readonly DispatcherTimer _notifyTimer;
     private bool _isAnnoyed;
 
-    public NotificationManager(ActivityMonitor monitor)
+    public NotificationManager(ActivityMonitor monitor, AppSettings settings)
     {
         _monitor = monitor;
+        _settings = settings;
         _notifyTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(5) };
         _notifyTimer.Tick += OnNotifyTick;
 
@@ -27,7 +33,7 @@ public class NotificationManager : IDisposable
             if (!_isAnnoyed)
             {
                 _isAnnoyed = true;
-                ShowToast("뭐하냐?");
+                ShowToast();
                 _notifyTimer.Start();
             }
         }
@@ -43,13 +49,16 @@ public class NotificationManager : IDisposable
 
     private void OnNotifyTick(object? sender, EventArgs e)
     {
-        ShowToast("뭐하냐?");
+        ShowToast();
     }
 
-    private static void ShowToast(string message)
+    private void ShowToast()
     {
+        var message = GetAnnoyedLine();
+        var title = ResolveTitle();
+
         new ToastContentBuilder()
-            .AddText("자캐 타이머")
+            .AddText(title)
             .AddText(message)
             .AddButton(new ToastButton()
                 .SetContent("확인")
@@ -58,6 +67,39 @@ public class NotificationManager : IDisposable
                 .SetContent("알림 중지")
                 .AddArgument("action", "snooze"))
             .Show();
+    }
+
+    private string GetAnnoyedLine()
+    {
+        try
+        {
+            var line = Dialogue.GetLine(
+                PetState.Annoyed,
+                _monitor.AnnoyanceLevel,
+                _monitor.WorkLog.TodaySeconds);
+            return string.IsNullOrWhiteSpace(line) ? FallbackMessage : line;
+        }
+        catch
+        {
+            return FallbackMessage;
+        }
+    }
+
+    private string ResolveTitle()
+    {
+        if (!_settings.PersonaEnabled) return DefaultTitle;
+        if (string.IsNullOrEmpty(_settings.ActivePersonaId)) return DefaultTitle;
+
+        try
+        {
+            var persona = PersonaStore.Load(_settings.ActivePersonaId);
+            var name = persona?.Name;
+            return string.IsNullOrWhiteSpace(name) ? DefaultTitle : name;
+        }
+        catch
+        {
+            return DefaultTitle;
+        }
     }
 
     private void OnToastActivated(ToastNotificationActivatedEventArgsCompat args)
