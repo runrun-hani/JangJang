@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
+using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -36,6 +37,7 @@ public partial class SettingsWindow : Window
         _originalActiveId = settings.ActivePersonaId;
         InitializeComponent();
         Closing += OnWindowClosing;
+        VersionText.Text = "v" + (Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "0.0.0");
 
         foreach (IdlePreset preset in Enum.GetValues<IdlePreset>())
             PresetCombo.Items.Add(new ComboBoxItem { Content = preset.ToDisplayName(), Tag = preset });

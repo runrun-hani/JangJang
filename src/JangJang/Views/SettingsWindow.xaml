@@ -7,7 +7,11 @@
         Background="{StaticResource BackgroundBrush}">
 
     <Grid>
-        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" Padding="0">
             <StackPanel Margin="20">
 
                 <TextBlock Text="설정" Style="{StaticResource PageTitle}" Margin="0,0,0,16"/>
@@ -444,5 +448,14 @@
 
             </StackPanel>
         </ScrollViewer>
+
+        <!-- 하단 고정 버전 표시 -->
+        <Border Grid.Row="1" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0"
+                Padding="12,6">
+            <TextBlock x:Name="VersionText"
+                       HorizontalAlignment="Right"
+                       FontSize="10"
+                       Foreground="{StaticResource TextMutedBrush}"/>
+        </Border>
     </Grid>
 </Window>
